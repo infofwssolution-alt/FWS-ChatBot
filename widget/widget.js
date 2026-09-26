@@ -543,10 +543,67 @@
 
   let isSending = false;
 
+  // Session-scoped persistence keys (tab-specific: persists across navigations in same tab, resets on new tab)
+  const IS_OPEN_KEY = `ai_chat_open_${clientId}`;
+  const HISTORY_KEY = `ai_chat_history_${clientId}`;
+
+  let chatHistory = [];
+  try {
+    const rawHist = sessionStorage.getItem(HISTORY_KEY);
+    if (rawHist) {
+      const parsed = JSON.parse(rawHist);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        chatHistory = parsed;
+      }
+    }
+  } catch (_) {}
+
+  function saveChatHistory() {
+    try {
+      sessionStorage.setItem(HISTORY_KEY, JSON.stringify(chatHistory));
+    } catch (_) {}
+  }
+
+  function appendMessageToDOM(sender, text, isNotice = false) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${sender}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = isNotice ? 'bubble notice-bubble' : 'bubble';
+    bubble.textContent = text;
+
+    wrapper.appendChild(bubble);
+    messagesContainer.appendChild(wrapper);
+    scrollToBottom();
+    return bubble;
+  }
+
+  // Restore previous message history in same tab if any
+  if (chatHistory.length > 0) {
+    messagesContainer.innerHTML = '';
+    chatHistory.forEach((msg) => {
+      appendMessageToDOM(msg.sender, msg.text, msg.isNotice);
+    });
+  }
+
+  // Restore open/closed state across navigations in same tab
+  try {
+    const wasOpen = sessionStorage.getItem(IS_OPEN_KEY) === 'true';
+    if (wasOpen) {
+      panel.classList.add('is-open');
+      launcher.classList.add('is-active');
+      panel.setAttribute('aria-hidden', 'false');
+      setTimeout(scrollToBottom, 60);
+    }
+  } catch (_) {}
+
   function toggleChat() {
     const isOpen = panel.classList.toggle('is-open');
     launcher.classList.toggle('is-active', isOpen);
     panel.setAttribute('aria-hidden', String(!isOpen));
+    try {
+      sessionStorage.setItem(IS_OPEN_KEY, String(isOpen));
+    } catch (_) {}
     if (isOpen) {
       setTimeout(() => chatInput.focus(), 150);
       scrollToBottom();
@@ -561,16 +618,11 @@
   }
 
   function appendMessage(sender, text, isNotice = false) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `message-wrapper ${sender}`;
-
-    const bubble = document.createElement('div');
-    bubble.className = isNotice ? 'bubble notice-bubble' : 'bubble';
-    bubble.textContent = text;
-
-    wrapper.appendChild(bubble);
-    messagesContainer.appendChild(wrapper);
-    scrollToBottom();
+    const bubble = appendMessageToDOM(sender, text, isNotice);
+    if (text) {
+      chatHistory.push({ sender, text, isNotice });
+      saveChatHistory();
+    }
     return bubble;
   }
 
@@ -925,6 +977,11 @@
       }
 
       removeTypingIndicator();
+
+      if (botBubble && botBubble.textContent) {
+        chatHistory.push({ sender: 'bot', text: botBubble.textContent, isNotice: false });
+        saveChatHistory();
+      }
 
       // Trigger any actions found in the complete response
       handleDetectedActions(accumulatedText);
