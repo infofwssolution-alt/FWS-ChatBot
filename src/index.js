@@ -66,7 +66,12 @@ app.get('/health', (req, res) => {
 const originCheck = createOriginCheckMiddleware();
 const rateLimit = createRateLimitMiddleware();
 
+import appointmentsRouter from './routes/appointments.js';
+import quickOrderRouter from './routes/quickOrder.js';
+
 app.use('/chat', originCheck, rateLimit, chatRouter);
+app.use('/appointments', originCheck, rateLimit, appointmentsRouter);
+app.use('/quick-order', originCheck, rateLimit, quickOrderRouter);
 
 // 404 Catch-All
 app.use((req, res) => {

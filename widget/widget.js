@@ -1,52 +1,26 @@
 /**
  * ============================================================================
  * EMBEDDABLE AI CHAT WIDGET (VANILLA JAVASCRIPT - ZERO DEPENDENCIES)
+ * Features:
+ * - Real-time SSE streaming
+ * - Automatic site navigation
+ * - In-chat automatic Add-to-Cart with redirect to checkout
+ * - In-chat appointment booking for custom sourcing
+ * - In-chat quick ordering with WhatsApp confirmation
+ * - Isolated Shadow DOM
  * ============================================================================
- *
- * Embed snippet:
- * <script src="http://localhost:3000/widget/widget.js" 
- *         data-api-url="http://localhost:3000" 
- *         data-client-id="client-demo" 
- *         defer></script>
  */
 
 (function () {
   'use strict';
 
-  // Prevent double injection if script is included twice
   if (window.__AI_CHAT_WIDGET_INITIALIZED__) return;
   window.__AI_CHAT_WIDGET_INITIALIZED__ = true;
 
-  /**
-   * 1. Read configuration from script tag attributes
-   */
   const scriptTag = document.currentScript || document.querySelector('script[data-api-url]');
   const apiUrl = scriptTag?.getAttribute('data-api-url')?.replace(/\/+$/, '') || window.location.origin;
-  const clientId = scriptTag?.getAttribute('data-client-id') || 'default-client';
+  const clientId = scriptTag?.getAttribute('data-client-id') || 'notebloom';
 
-  /**
-   * ==========================================================================
-   * WHY sessionStorage INSTEAD OF localStorage:
-   * ==========================================================================
-   * 1. Ephemeral Visit Lifecycle:
-   *    `sessionStorage` is strictly scoped to the active browser tab and window 
-   *    lifecycle. When a visitor closes the tab or window, the session ID is 
-   *    automatically purged. With `localStorage`, a stale session ID would persist 
-   *    indefinitely across days or weeks, incorrectly conflating separate visits into 
-   *    one long-running context.
-   *
-   * 2. Privacy & Shared Device Protection:
-   *    On public or shared computers (e.g. libraries, offices, family PCs), 
-   *    `localStorage` retains identifiable tokens and state indefinitely. 
-   *    `sessionStorage` guarantees that the conversation token dies when the tab 
-   *    is closed, preventing subsequent users of that computer from inheriting the session.
-   *
-   * 3. Rate Limit & Window Reset Alignment:
-   *    Our backend rate limiter operates on a rolling hourly window per `session_id`. 
-   *    Using `sessionStorage` ensures clean session resets for fresh user visits while 
-   *    preventing accidental permanent lockouts due to permanently persisted storage.
-   * ==========================================================================
-   */
   function getOrCreateSessionId() {
     const STORAGE_KEY = `ai_chat_session_${clientId}`;
     let sessionId = null;
@@ -57,7 +31,6 @@
         sessionStorage.setItem(STORAGE_KEY, sessionId);
       }
     } catch (e) {
-      // Fallback if third-party cookies/storage are disabled
       sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now().toString(36);
     }
     return sessionId;
@@ -65,15 +38,12 @@
 
   const sessionId = getOrCreateSessionId();
 
-  // 2. Create host container and Shadow DOM
   const hostElement = document.createElement('div');
   hostElement.id = 'ai-chatbot-widget-host';
   document.body.appendChild(hostElement);
 
-  // Attach Shadow DOM so host site CSS never bleeds into or out of widget
   const shadow = hostElement.attachShadow({ mode: 'open' });
 
-  // 3. Define Widget Template & Isolated CSS
   const template = document.createElement('template');
   template.innerHTML = `
     <style>
@@ -127,7 +97,7 @@
 
       .chat-launcher:hover {
         transform: scale(1.08);
-        box-shadow: 0 14px 20px -3px rgba(79, 70, 229, 0.45);
+        box-shadow: 0 14px 22px -3px rgba(124, 47, 47, 0.5);
       }
 
       .chat-launcher:active {
@@ -162,8 +132,8 @@
         position: fixed;
         bottom: 96px;
         right: 24px;
-        width: 380px;
-        height: 560px;
+        width: 390px;
+        height: 590px;
         max-width: calc(100vw - 32px);
         max-height: calc(100vh - 120px);
         background: var(--surface);
@@ -210,19 +180,18 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
-        font-size: 16px;
+        font-size: 18px;
       }
 
       .header-text h3 {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         letter-spacing: -0.01em;
       }
 
       .header-text p {
         font-size: 12px;
-        opacity: 0.88;
+        opacity: 0.9;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -269,7 +238,7 @@
       .message-wrapper {
         display: flex;
         flex-direction: column;
-        max-width: 82%;
+        max-width: 86%;
         animation: fadeIn 0.2s ease-out;
       }
 
@@ -313,6 +282,113 @@
         font-size: 13px;
         border-radius: var(--radius-md) !important;
         padding: 12px 14px !important;
+      }
+
+      /* Navigation & Action Banner */
+      .action-banner {
+        background: #fff7ed;
+        border: 1px solid #ffedd5;
+        border-left: 4px solid var(--primary);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #9a3412;
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: pulse 1.5s infinite ease-in-out;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.75; }
+      }
+
+      /* In-Chat Interactive Form Card */
+      .chat-interactive-card {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-top: 8px;
+        box-shadow: 0 4px 12px rgba(32, 40, 58, 0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .chat-interactive-card h4 {
+        font-size: 14px;
+        color: var(--primary);
+        font-weight: 600;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .form-field label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .form-control {
+        border: 1px solid var(--border);
+        background: #faf8f5;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        color: var(--text-main);
+        outline: none;
+      }
+
+      .form-control:focus {
+        border-color: var(--primary);
+        background: #ffffff;
+      }
+
+      .form-submit-btn {
+        background: var(--primary-gradient);
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 9px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .form-submit-btn:hover {
+        opacity: 0.92;
+      }
+
+      .wa-confirm-btn {
+        background: #25d366;
+        color: #ffffff;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 6px;
       }
 
       /* Animated Typing Indicator */
@@ -402,7 +478,6 @@
       }
     </style>
 
-    <!-- Floating Chat Launcher Button -->
     <button class="chat-launcher" id="chatLauncher" aria-label="Open support chat">
       <svg class="launcher-icon chat-icon" viewBox="0 0 24 24">
         <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
@@ -415,7 +490,6 @@
       </svg>
     </button>
 
-    <!-- Chat Panel -->
     <div class="chat-panel" id="chatPanel" role="dialog" aria-hidden="true">
       <div class="panel-header">
         <div class="header-info">
@@ -435,7 +509,7 @@
 
       <div class="panel-messages" id="panelMessages">
         <div class="message-wrapper bot">
-          <div class="bubble">Hello! 🌸 Welcome to Notebloom. Ask me anything about our Korean stationery, journals, notebooks, pens, prices, or order tracking!</div>
+          <div class="bubble">Hello! 🌸 Welcome to Notebloom. Ask me anything, or let me guide you to our stationery, add items to your cart, or book an appointment for custom sourcing!</div>
         </div>
       </div>
 
@@ -444,7 +518,7 @@
           type="text" 
           id="chatInput" 
           class="chat-input" 
-          placeholder="Ask a question..." 
+          placeholder="Ask or type 'Take me to Diaries'..." 
           autocomplete="off" 
           aria-label="Your message"
         />
@@ -459,7 +533,6 @@
 
   shadow.appendChild(template.content.cloneNode(true));
 
-  // DOM Elements
   const launcher = shadow.getElementById('chatLauncher');
   const panel = shadow.getElementById('chatPanel');
   const closeBtn = shadow.getElementById('closePanelBtn');
@@ -470,7 +543,6 @@
 
   let isSending = false;
 
-  // Toggle Panel Open/Close
   function toggleChat() {
     const isOpen = panel.classList.toggle('is-open');
     launcher.classList.toggle('is-active', isOpen);
@@ -488,9 +560,6 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  /**
-   * Appends a message bubble into the conversation view
-   */
   function appendMessage(sender, text, isNotice = false) {
     const wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${sender}`;
@@ -505,9 +574,6 @@
     return bubble;
   }
 
-  /**
-   * Appends typing indicator dots
-   */
   function showTypingIndicator() {
     const wrapper = document.createElement('div');
     wrapper.className = 'message-wrapper bot';
@@ -535,6 +601,235 @@
   }
 
   /**
+   * Helper: Add item to Notebloom guest cart cookie and redirect
+   */
+  function addToCartAndRedirect(bookId, qty = 1, redirectUrl = '/cart') {
+    let cart = [];
+    try {
+      const match = document.cookie.match(/(?:^|; )notebloom_cart=([^;]*)/);
+      if (match) cart = JSON.parse(decodeURIComponent(match[1]));
+      if (!Array.isArray(cart)) cart = [];
+    } catch (_) {}
+
+    const idx = cart.findIndex((it) => Number(it.book_id) === Number(bookId));
+    if (idx >= 0) {
+      cart[idx].quantity = (Number(cart[idx].quantity) || 1) + qty;
+    } else {
+      cart.push({ book_id: Number(bookId), quantity: qty, color: null });
+    }
+
+    // Set cookie for 30 days
+    document.cookie = `notebloom_cart=${encodeURIComponent(JSON.stringify(cart))}; path=/; max-age=2592000; SameSite=Lax`;
+
+    // Perform redirect after short visual confirmation
+    setTimeout(() => {
+      window.location.href = redirectUrl;
+    }, 1200);
+  }
+
+  /**
+   * Helper: Render interactive appointment booking card in chat
+   */
+  function renderAppointmentBookingCard() {
+    const card = document.createElement('div');
+    card.className = 'chat-interactive-card';
+    card.innerHTML = `
+      <h4>📅 Book Custom Sourcing Consultation</h4>
+      <p style="font-size:12px; color:var(--text-muted);">Speak with our team regarding custom stationery, bulk orders, or wedding favors.</p>
+      <div class="form-field">
+        <label>Your Name *</label>
+        <input type="text" class="form-control" id="aptName" placeholder="e.g. Ayesha Khan" required />
+      </div>
+      <div class="form-field">
+        <label>WhatsApp / Phone *</label>
+        <input type="tel" class="form-control" id="aptPhone" placeholder="0333XXXXXXX" required />
+      </div>
+      <div class="form-field">
+        <label>Preferred Date / Time</label>
+        <input type="text" class="form-control" id="aptDate" placeholder="e.g. Next Monday 3 PM" />
+      </div>
+      <div class="form-field">
+        <label>Project Details / Notes</label>
+        <input type="text" class="form-control" id="aptNotes" placeholder="e.g. 100 customized notebooks with logo" />
+      </div>
+      <button type="button" class="form-submit-btn" id="aptSubmitBtn">Submit Booking Request 🌸</button>
+      <div id="aptStatus"></div>
+    `;
+
+    messagesContainer.appendChild(card);
+    scrollToBottom();
+
+    const submitBtn = card.querySelector('#aptSubmitBtn');
+    submitBtn.addEventListener('click', async () => {
+      const name = card.querySelector('#aptName').value.trim();
+      const phone = card.querySelector('#aptPhone').value.trim();
+      const date = card.querySelector('#aptDate').value.trim();
+      const message = card.querySelector('#aptNotes').value.trim();
+      const statusDiv = card.querySelector('#aptStatus');
+
+      if (!name || !phone) {
+        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Please enter your name and phone number.</p>';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving Booking...';
+
+      try {
+        const res = await fetch(`${apiUrl}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, date, message, session_id: sessionId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          card.innerHTML = `
+            <div style="color:#15803d; font-weight:600; font-size:13px;">✅ Consultation Request Submitted!</div>
+            <p style="font-size:12px; margin-top:4px;">We have received your details and will contact you via WhatsApp / phone shortly.</p>
+            <a href="${data.whatsappUrl}" target="_blank" class="wa-confirm-btn">📱 Confirm via WhatsApp</a>
+          `;
+        } else {
+          statusDiv.innerHTML = `<p style="color:#b91c1c; font-size:12px;">${data.error || 'Failed to submit'}</p>`;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Booking Request 🌸';
+        }
+      } catch (err) {
+        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Connection error. Please try again.</p>';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Booking Request 🌸';
+      }
+    });
+  }
+
+  /**
+   * Helper: Render interactive quick order form in chat
+   */
+  function renderQuickOrderCard() {
+    const card = document.createElement('div');
+    card.className = 'chat-interactive-card';
+    card.innerHTML = `
+      <h4>🛍️ Quick Order Form</h4>
+      <p style="font-size:12px; color:var(--text-muted);">Place an order directly from chat without going through full checkout!</p>
+      <div class="form-field">
+        <label>Full Name *</label>
+        <input type="text" class="form-control" id="ordName" placeholder="Your Name" required />
+      </div>
+      <div class="form-field">
+        <label>WhatsApp / Phone *</label>
+        <input type="tel" class="form-control" id="ordPhone" placeholder="0333XXXXXXX" required />
+      </div>
+      <div class="form-field">
+        <label>Delivery Address *</label>
+        <input type="text" class="form-control" id="ordAddress" placeholder="Street, Area, City" required />
+      </div>
+      <div class="form-field">
+        <label>Items & Quantity *</label>
+        <input type="text" class="form-control" id="ordItems" placeholder="e.g. 1 Scented Chocolate Notebook, 1 Diamond Pen" required />
+      </div>
+      <div class="form-field">
+        <label>Payment Method</label>
+        <select class="form-control" id="ordPayment">
+          <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+          <option value="Bank Transfer">Advance Bank Transfer</option>
+          <option value="JazzCash / EasyPaisa">JazzCash / EasyPaisa</option>
+        </select>
+      </div>
+      <button type="button" class="form-submit-btn" id="ordSubmitBtn">Place Quick Order 📦</button>
+      <div id="ordStatus"></div>
+    `;
+
+    messagesContainer.appendChild(card);
+    scrollToBottom();
+
+    const submitBtn = card.querySelector('#ordSubmitBtn');
+    submitBtn.addEventListener('click', async () => {
+      const name = card.querySelector('#ordName').value.trim();
+      const phone = card.querySelector('#ordPhone').value.trim();
+      const address = card.querySelector('#ordAddress').value.trim();
+      const items = card.querySelector('#ordItems').value.trim();
+      const paymentMethod = card.querySelector('#ordPayment').value;
+      const statusDiv = card.querySelector('#ordStatus');
+
+      if (!name || !phone || !address || !items) {
+        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Please fill in all required fields.</p>';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Recording Order...';
+
+      try {
+        const res = await fetch(`${apiUrl}/quick-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, address, items, paymentMethod, session_id: sessionId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          card.innerHTML = `
+            <div style="color:#15803d; font-weight:600; font-size:13px;">🎉 Order ${data.orderCode} Confirmed!</div>
+            <p style="font-size:12px; margin-top:4px;">Thank you! We have logged your order and will confirm it before dispatch.</p>
+            <a href="${data.whatsappUrl}" target="_blank" class="wa-confirm-btn">📱 Send WhatsApp Confirmation</a>
+          `;
+        } else {
+          statusDiv.innerHTML = `<p style="color:#b91c1c; font-size:12px;">${data.error || 'Failed to submit'}</p>`;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Place Quick Order 📦';
+        }
+      } catch (err) {
+        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Connection error. Please try again.</p>';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Place Quick Order 📦';
+      }
+    });
+  }
+
+  /**
+   * Action Parser: Processes [[ACTION:...]] tags from assistant stream
+   */
+  function handleDetectedActions(rawText) {
+    // 1. Check for NAVIGATE directive: [[ACTION:NAVIGATE:<url>]]
+    const navMatch = rawText.match(/\[\[ACTION:NAVIGATE:(.*?)\]\]/);
+    if (navMatch) {
+      const targetUrl = navMatch[1].trim();
+      const banner = document.createElement('div');
+      banner.className = 'action-banner';
+      banner.innerHTML = `<span>🌸 Taking you to <strong>${targetUrl}</strong> in a moment...</span>`;
+      messagesContainer.appendChild(banner);
+      scrollToBottom();
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 1400);
+    }
+
+    // 2. Check for ADD_TO_CART directive: [[ACTION:ADD_TO_CART:<json>]]
+    const cartMatch = rawText.match(/\[\[ACTION:ADD_TO_CART:(.*?)\]\]/);
+    if (cartMatch) {
+      try {
+        const itemData = JSON.parse(cartMatch[1]);
+        const banner = document.createElement('div');
+        banner.className = 'action-banner';
+        banner.innerHTML = `<span>🛒 Added <strong>${itemData.name}</strong> to your cart! Taking you to checkout...</span>`;
+        messagesContainer.appendChild(banner);
+        scrollToBottom();
+        addToCartAndRedirect(itemData.bookId, itemData.qty || 1, itemData.redirect || '/cart');
+      } catch (e) {
+        console.error('Failed to parse cart directive:', e);
+      }
+    }
+
+    // 3. Check for SHOW_FORM:booking
+    if (rawText.includes('[[ACTION:SHOW_FORM:booking]]')) {
+      renderAppointmentBookingCard();
+    }
+
+    // 4. Check for SHOW_FORM:quick_order
+    if (rawText.includes('[[ACTION:SHOW_FORM:quick_order]]')) {
+      renderQuickOrderCard();
+    }
+  }
+
+  /**
    * Form submission and SSE stream consumption
    */
   chatForm.addEventListener('submit', async (e) => {
@@ -542,14 +837,12 @@
     const message = chatInput.value.trim();
     if (!message || isSending) return;
 
-    // Display user message
     appendMessage('user', message);
     chatInput.value = '';
     isSending = true;
     chatInput.disabled = true;
     sendBtn.disabled = true;
 
-    // Show typing dots before first token arrives
     showTypingIndicator();
 
     try {
@@ -564,14 +857,12 @@
         }),
       });
 
-      // Handle 403 Forbidden (Bad Origin)
       if (response.status === 403) {
         removeTypingIndicator();
         appendMessage('bot', '⚠️ Chat is currently disabled for this website domain. Please contact support.', true);
         return;
       }
 
-      // Handle 429 Rate Limit Exceeded
       if (response.status === 429) {
         removeTypingIndicator();
         let errorMsg = "You've reached the message limit, please try again later.";
@@ -583,18 +874,17 @@
         return;
       }
 
-      // Handle generic server errors
       if (!response.ok) {
         removeTypingIndicator();
         appendMessage('bot', 'Sorry, our chat service encountered an error. Please try again in a moment.', true);
         return;
       }
 
-      // Read SSE stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let botBubble = null;
       let buffer = '';
+      let accumulatedText = '';
 
       while (true) {
         const { value, done } = await reader.read();
@@ -602,7 +892,7 @@
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop(); // Retain incomplete line
+        buffer = lines.pop();
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -616,25 +906,28 @@
           try {
             const parsed = JSON.parse(dataPayload);
             if (parsed.text) {
-              // When first token lands, remove typing indicator and mount bubble
               if (!botBubble) {
                 removeTypingIndicator();
                 botBubble = appendMessage('bot', '');
               }
-              botBubble.textContent += parsed.text;
+              accumulatedText += parsed.text;
+
+              // Hide raw action tags while streaming
+              const cleanText = accumulatedText.replace(/\[\[ACTION:.*?\]\]/g, '').trim();
+              botBubble.textContent = cleanText;
               scrollToBottom();
             } else if (parsed.error) {
               if (!botBubble) removeTypingIndicator();
               appendMessage('bot', parsed.error, true);
             }
-          } catch (jsonErr) {
-            // Non-JSON SSE event ignored
-          }
+          } catch (_) {}
         }
       }
 
-      // Fallback if stream completed with no tokens
       removeTypingIndicator();
+
+      // Trigger any actions found in the complete response
+      handleDetectedActions(accumulatedText);
 
     } catch (networkErr) {
       console.error('[Chat Widget] Connection failed:', networkErr);
