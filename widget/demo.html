@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notebloom — Aesthetic Korean Stationery & Journals | Testbed</title>
+  <style>
+    :root {
+      --cream: #faf7f2;
+      --parchment: #ede4d3;
+      --card-bg: #ffffff;
+      --border: #ddd0b8;
+      --oxblood: #7c2f2f;
+      --oxblood-dark: #5c1d1d;
+      --ink: #20283a;
+      --ink-soft: #636b7c;
+      --brass: #c29b38;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--cream);
+      color: var(--ink);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(250, 247, 242, 0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--oxblood);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      font-size: 0.7rem;
+      background: rgba(124, 47, 47, 0.1);
+      color: var(--oxblood);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(124, 47, 47, 0.25);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      width: 100%;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero p.tagline {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--oxblood);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p.desc {
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .product-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 12px rgba(32, 40, 58, 0.04);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(32, 40, 58, 0.08);
+    }
+
+    .product-category {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--brass);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .product-card h3 {
+      font-size: 1.1rem;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    .product-card p {
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      margin-bottom: 1rem;
+      flex: 1;
+    }
+
+    .product-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #f0e9dd;
+      padding-top: 0.8rem;
+    }
+
+    .price {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--oxblood);
+    }
+
+    .badge-stock {
+      font-size: 0.75rem;
+      color: #15803d;
+      font-weight: 600;
+    }
+
+    .badge-soldout {
+      font-size: 0.75rem;
+      color: #b91c1c;
+      font-weight: 600;
+    }
+
+    .tester-box {
+      background: #f4ece1;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      margin-top: 2rem;
+    }
+
+    .tester-box h2 {
+      font-size: 1.25rem;
+      color: var(--oxblood);
+      margin-bottom: 0.75rem;
+    }
+
+    .tester-box ul {
+      margin-left: 1.5rem;
+      color: var(--ink);
+    }
+
+    .tester-box li {
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    code {
+      background: #e6dbca;
+      color: var(--oxblood-dark);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 0.875rem;
+      background: #f4ece1;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span>🌸 Notebloom</span>
+      <span class="brand-badge">notebloom.shop AI Testbed</span>
+    </div>
+    <div style="font-size: 0.85rem; color: var(--ink-soft);">
+      Origin: <strong style="color: var(--oxblood);">http://localhost:3001</strong>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <p class="tagline">Aesthetic Korean Stationery & Journals</p>
+      <h1>Beautiful tools to let your ideas bloom.</h1>
+      <p class="desc">
+        Try chatting with the Notebloom Assistant in the bottom right! It understands your products, prices in PKR, stock statuses, studio location in Karachi, and ordering instructions.
+      </p>
+    </div>
+
+    <div class="products-grid">
+      <div class="product-card">
+        <span class="product-category">Diaries & Notebooks</span>
+        <h3>Scented Chocolate Notebook</h3>
+        <p>Sweet Notes Stationery aesthetic scented pages with tactile soft cover.</p>
+        <div class="product-bottom">
+          <span class="price">PKR 525.02</span>
+          <span class="badge-stock">In Stock</span>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <span class="product-category">Diaries & Notebooks</span>
+        <h3>Scented Biscuit Notebook</h3>
+        <p>Choco-Desk cute collectible scented biscuit notebook.</p>
+        <div class="product-bottom">
+          <span class="price">PKR 525.00</span>
+          <span class="badge-soldout">SOLD OUT</span>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <span class="product-category">Highlighters & Markers</span>
+        <h3>Bunny Mini Color Highlighters</h3>
+        <p>BESTDI pastel colors set for aesthetic notes and journaling.</p>
+        <div class="product-bottom">
+          <span class="price">PKR 849.99</span>
+          <span class="badge-stock">In Stock</span>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <span class="product-category">Writing Tools</span>
+        <h3>Diamond Pen</h3>
+        <p>Sweet Desk Boutique elegant gem-topped smooth writing pen.</p>
+        <div class="product-bottom">
+          <span class="price">PKR 180.00</span>
+          <span class="badge-stock">In Stock</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tester-box">
+      <h2>💡 Try Asking Notebloom Assistant:</h2>
+      <ul>
+        <li><em>"What is the price of the Scented Chocolate Notebook?"</em> (Answers PKR 525.02)</li>
+        <li><em>"Is the Scented Biscuit Notebook available?"</em> (Explains it is currently SOLD OUT)</li>
+        <li><em>"Where is your studio located and how can I contact you?"</em> (Shares North Nazimabad, Karachi, email: notebloom50@gmail.com, phone: 03373876846)</li>
+        <li><em>"Do you sell laptops or gold watches?"</em> (Politely explains: <code>"I'm not sure, let me get you in touch with the team at notebloom50@gmail.com or 03373876846."</code>)</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    © 2026 Notebloom • North Nazimabad, Karachi • Aesthetic Korean Stationery
+  </footer>
+
+  <!-- EMBED THE NOTEBLOOM WIDGET -->
+  <script 
+    src="/widget/widget.js" 
+    data-api-url="http://localhost:3001" 
+    data-client-id="notebloom-shop" 
+    defer>
+  </script>
+</body>
+</html>
