@@ -90,7 +90,11 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     // Validate database connection on boot
-    await connectDB();
+    try {
+      await connectDB();
+    } catch (dbErr) {
+      console.warn('[Database] Running in local RAG mode with precomputed vector knowledge base.');
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`\n======================================================`);

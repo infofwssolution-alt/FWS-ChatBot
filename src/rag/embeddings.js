@@ -1,3 +1,15 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Ensure Windows dynamic linker can resolve onnxruntime dependencies
+if (process.platform === 'win32') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const onnxBin = path.resolve(__dirname, '../../node_modules/@xenova/transformers/node_modules/onnxruntime-node/bin/napi-v3/win32/x64');
+  if (process.env.PATH && !process.env.PATH.includes(onnxBin)) {
+    process.env.PATH = `${onnxBin};${process.env.PATH}`;
+  }
+}
+
 import { pipeline } from '@xenova/transformers';
 
 let extractor = null;

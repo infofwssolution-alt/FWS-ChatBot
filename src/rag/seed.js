@@ -18,7 +18,8 @@ async function seed() {
     process.exit(1);
   }
 
-  const jsonFilePath = path.resolve(__dirname, 'data/notebloom-knowledge.json');
+  const knowledgeFile = process.env.KNOWLEDGE_FILE || 'data/kelvyn-knowledge.json';
+  const jsonFilePath = path.resolve(__dirname, knowledgeFile);
 
   try {
     console.log(`[Seed] Reading knowledge base from: ${jsonFilePath}`);
