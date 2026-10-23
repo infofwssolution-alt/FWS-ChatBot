@@ -3,9 +3,16 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDB, closeDB } from './db/connect.js';
+import { generateEmbedding } from './rag/embeddings.js';
 import { createOriginCheckMiddleware } from './middleware/originCheck.js';
 import { createRateLimitMiddleware } from './middleware/rateLimit.js';
+
 import chatRouter from './routes/chat.js';
+import leadRouter from './routes/lead.js';
+import bookingRouter from './routes/booking.js';
+import adminRouter from './routes/admin.js';
+import appointmentsRouter from './routes/appointments.js';
+import quickOrderRouter from './routes/quickOrder.js';
 
 // Resolve directory paths for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +29,8 @@ const REQUIRED_ENV_VARS = [
   'UPSTASH_REDIS_REST_TOKEN',
   'ALLOWED_ORIGINS',
   'RATE_LIMIT_PER_HOUR',
+  'ADMIN_TOKEN',
+  'DAILY_CAP_PER_CLIENT',
 ];
 
 const missingEnvVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key] || process.env[key].trim() === '');
@@ -51,27 +60,46 @@ app.use('/widget', express.static(widgetDir));
 
 // ============================================================================
 // HEALTH CHECK ENDPOINT
+// Verifies HTTP server availability AND active MongoDB connectivity
 // ============================================================================
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get('/health', async (req, res) => {
+  try {
+    const db = await connectDB();
+    await db.command({ ping: 1 });
+    return res.status(200).json({
+      status: 'ok',
+      mongodb: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    return res.status(503).json({
+      status: 'degraded',
+      mongodb: 'disconnected',
+      error: err.message,
+    });
+  }
 });
 
 // ============================================================================
-// CHAT ENDPOINT PIPELINE
+// PIPELINE MIDDLEWARE
 // Strict order:
 // 1. Origin Check (rejects 403 before touching Redis or LLM)
-// 2. Rate Limiting (rejects 429 if cap reached)
-// 3. Chat Router (RAG retrieval -> Groq streaming -> DB logging)
+// 2. Rate Limiting (session + IP + client daily cap; rejects 429)
 // ============================================================================
 const originCheck = createOriginCheckMiddleware();
 const rateLimit = createRateLimitMiddleware();
 
-import appointmentsRouter from './routes/appointments.js';
-import quickOrderRouter from './routes/quickOrder.js';
-
+// Chatbot Core Routes
 app.use('/chat', originCheck, rateLimit, chatRouter);
+app.use('/lead', originCheck, rateLimit, leadRouter);
+app.use('/booking', originCheck, rateLimit, bookingRouter);
+
+// Backwards compatibility for legacy demo forms
 app.use('/appointments', originCheck, rateLimit, appointmentsRouter);
 app.use('/quick-order', originCheck, rateLimit, quickOrderRouter);
+
+// Admin Routes (protected by Bearer ADMIN_TOKEN inside router)
+app.use('/admin', adminRouter);
 
 // 404 Catch-All
 app.use((req, res) => {
@@ -89,11 +117,20 @@ app.use((err, req, res, next) => {
 // ============================================================================
 async function startServer() {
   try {
-    // Validate database connection on boot
+    // 1. Validate database connection on boot
     try {
       await connectDB();
     } catch (dbErr) {
-      console.warn('[Database] Running in local RAG mode with precomputed vector knowledge base.');
+      console.warn('[Database] Initial connection attempt had warnings. Retrying on demand.');
+    }
+
+    // 2. Warm embedding model on boot so the first user message is not slow
+    try {
+      console.log('[Startup] Warming local embedding model...');
+      await generateEmbedding('warmup text');
+      console.log('[Startup] Embedding model warmed up and ready.');
+    } catch (embErr) {
+      console.warn('[Startup] Embedding warmup notice:', embErr.message);
     }
 
     const server = app.listen(PORT, () => {
@@ -117,7 +154,7 @@ async function startServer() {
     process.on('SIGINT', () => shutdown('SIGINT'));
     process.on('SIGTERM', () => shutdown('SIGTERM'));
   } catch (error) {
-    console.error('FATAL: Could not initialize database connection at startup:', error.message);
+    console.error('FATAL: Could not initialize server at startup:', error.message);
     process.exit(1);
   }
 }
