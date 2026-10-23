@@ -3,11 +3,11 @@
  * EMBEDDABLE AI CHAT WIDGET (VANILLA JAVASCRIPT - ZERO DEPENDENCIES)
  * Features:
  * - Real-time SSE streaming
- * - Automatic site navigation
- * - In-chat automatic Add-to-Cart with redirect to checkout
- * - In-chat appointment booking for custom sourcing
- * - In-chat quick ordering with WhatsApp confirmation
- * - Isolated Shadow DOM
+ * - Configurable data attributes: data-client-id, data-api-url, data-title,
+ *   data-greeting, data-color, data-avatar-url, data-position
+ * - Safe markdown rendering in bot replies (bold, italics, links, lists, linebreaks)
+ * - In-chat lead capture & appointment booking forms
+ * - Isolated Shadow DOM & full mobile viewport optimization
  * ============================================================================
  */
 
@@ -19,7 +19,16 @@
 
   const scriptTag = document.currentScript || document.querySelector('script[data-api-url]');
   const apiUrl = scriptTag?.getAttribute('data-api-url')?.replace(/\/+$/, '') || window.location.origin;
-  const clientId = scriptTag?.getAttribute('data-client-id') || 'kelvyn';
+  const clientId = scriptTag?.getAttribute('data-client-id') || 'default';
+
+  // Configurable attributes
+  const chatTitle = scriptTag?.getAttribute('data-title') || 'Support Assistant';
+  const chatGreeting = scriptTag?.getAttribute('data-greeting') || 'Hello! How can I help you today?';
+  const primaryColor = scriptTag?.getAttribute('data-color') || '#2563eb';
+  const avatarUrl = scriptTag?.getAttribute('data-avatar-url') || '';
+  const position = (scriptTag?.getAttribute('data-position') || 'bottom-right').toLowerCase();
+
+  const isLeft = position.includes('left');
 
   function getOrCreateSessionId() {
     const STORAGE_KEY = `ai_chat_session_${clientId}`;
@@ -44,27 +53,87 @@
 
   const shadow = hostElement.attachShadow({ mode: 'open' });
 
+  // Safe markdown renderer without raw innerHTML
+  function renderSafeMarkdown(rawText) {
+    if (!rawText) return '';
+
+    // 1. HTML entity escape to prevent XSS
+    let escaped = rawText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    // 2. Bold: **text** or __text__
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    escaped = escaped.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+    // 3. Italics: *text* or _text_
+    escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    escaped = escaped.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+    // 4. Inline code: `text`
+    escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // 5. Links: [text](https://url)
+    escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    // 6. Split into lines to parse bullet lists and paragraphs
+    const lines = escaped.split('\n');
+    let inList = false;
+    const outputLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const bulletMatch = line.match(/^\s*[-*•]\s+(.*)$/);
+
+      if (bulletMatch) {
+        if (!inList) {
+          inList = true;
+          outputLines.push('<ul>');
+        }
+        outputLines.push(`<li>${bulletMatch[1]}</li>`);
+      } else {
+        if (inList) {
+          inList = false;
+          outputLines.push('</ul>');
+        }
+        outputLines.push(line);
+      }
+    }
+    if (inList) outputLines.push('</ul>');
+
+    // Join remaining with line breaks, preserving lists cleanly
+    return outputLines
+      .join('\n')
+      .replace(/\n{2,}/g, '<br><br>')
+      .replace(/\n/g, '<br>')
+      .replace(/<br><\/?(ul|li)>/g, '<$1>')
+      .replace(/<\/?(ul|li)><br>/g, '<$1>');
+  }
+
   const template = document.createElement('template');
   template.innerHTML = `
     <style>
       :host {
-        --primary: #f59e0b;
-        --primary-hover: #d97706;
-        --surface: rgba(255, 255, 255, 0.94);
+        --primary: ${primaryColor};
+        --primary-hover: ${primaryColor};
+        --surface: #ffffff;
         --surface-border: #e2e8f0;
-        --header-bg: #111827;
-        --header-border: #1f2937;
+        --header-bg: #0f172a;
+        --header-border: #1e293b;
         --bot-bubble: #f1f5f9;
         --bot-bubble-border: #e2e8f0;
         --bot-text: #0f172a;
-        --user-bubble: #f59e0b;
-        --user-text: #0b0f17;
+        --user-bubble: ${primaryColor};
+        --user-text: #ffffff;
         --text-main: #0f172a;
         --text-muted: #64748b;
-        --shadow-panel: 0 24px 48px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
-        --shadow-launcher: 0 10px 25px -5px rgba(245, 158, 11, 0.4), 0 8px 10px -6px rgba(245, 158, 11, 0.2);
+        --shadow-panel: 0 20px 40px -10px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
+        --shadow-launcher: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
         --radius-panel: 14px;
-        --radius-bubble: 8px;
+        --radius-bubble: 10px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
         font-size: 13.5px;
         line-height: 1.5;
@@ -77,30 +146,28 @@
         padding: 0;
       }
 
-      /* Floating Launcher Button - Industrial Minimalist */
+      /* Floating Launcher Button */
       .chat-launcher {
         position: fixed;
         bottom: 24px;
-        right: 24px;
-        width: 54px;
-        height: 54px;
+        ${isLeft ? 'left: 24px;' : 'right: 24px;'}
+        width: 56px;
+        height: 56px;
         border-radius: 50%;
-        background: #f59e0b;
+        background: var(--primary);
         box-shadow: var(--shadow-launcher);
-        border: 1px solid rgba(217, 119, 6, 0.5);
+        border: none;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 2147483647;
-        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease;
         outline: none;
       }
 
       .chat-launcher:hover {
         transform: scale(1.06);
-        background: #fbbf24;
-        box-shadow: 0 14px 28px -4px rgba(245, 158, 11, 0.5);
       }
 
       .chat-launcher:active {
@@ -108,9 +175,9 @@
       }
 
       .launcher-icon {
-        width: 22px;
-        height: 22px;
-        fill: #0b0f17;
+        width: 24px;
+        height: 24px;
+        fill: #ffffff;
         transition: transform 0.25s ease, opacity 0.25s ease;
       }
 
@@ -130,16 +197,16 @@
         transform: rotate(0) scale(1);
       }
 
-      /* Chat Panel Window - Glassmorphic / CAD Precision */
+      /* Chat Panel Window */
       .chat-panel {
         position: fixed;
         bottom: 90px;
-        right: 24px;
+        ${isLeft ? 'left: 24px;' : 'right: 24px;'}
         width: 380px;
         height: 560px;
         max-width: calc(100vw - 32px);
         max-height: calc(100vh - 110px);
-        background: #ffffff;
+        background: var(--surface);
         border: 1px solid var(--surface-border);
         border-radius: var(--radius-panel);
         box-shadow: var(--shadow-panel);
@@ -159,7 +226,7 @@
         pointer-events: auto;
       }
 
-      /* Header - Clean Technical Obsidian Header */
+      /* Header */
       .panel-header {
         background: var(--header-bg);
         border-bottom: 1px solid var(--header-border);
@@ -179,30 +246,31 @@
       .bot-avatar {
         width: 32px;
         height: 32px;
-        border-radius: 6px;
-        background: #f59e0b;
-        color: #0b0f17;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-weight: 800;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #ffffff;
+        font-weight: 700;
         font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        overflow: hidden;
+      }
+
+      .bot-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       .header-text h3 {
-        font-size: 13.5px;
+        font-size: 14px;
         font-weight: 700;
-        letter-spacing: -0.01em;
-        font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
       }
 
       .header-text p {
         font-size: 11px;
         color: #94a3b8;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        letter-spacing: 0.02em;
         display: flex;
         align-items: center;
         gap: 5px;
@@ -232,7 +300,7 @@
 
       .close-btn:hover {
         color: #ffffff;
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.1);
       }
 
       /* Messages Container */
@@ -244,94 +312,150 @@
         flex-direction: column;
         gap: 12px;
         background: #f8fafc;
-        background-image: 
-          linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
-        background-size: 24px 24px;
       }
 
       .message-wrapper {
         display: flex;
         flex-direction: column;
-        max-width: 88%;
-        animation: fadeIn 0.15s ease-out;
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(4px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      .message-wrapper.bot {
-        align-self: flex-start;
+        max-width: 85%;
+        word-break: break-word;
       }
 
       .message-wrapper.user {
         align-self: flex-end;
       }
 
+      .message-wrapper.bot {
+        align-self: flex-start;
+      }
+
       .bubble {
         padding: 10px 14px;
         border-radius: var(--radius-bubble);
-        word-break: break-word;
-        white-space: pre-wrap;
+        font-size: 13.5px;
         line-height: 1.5;
-        font-size: 13px;
-      }
-
-      .message-wrapper.bot .bubble {
-        background: #ffffff;
-        color: var(--bot-text);
-        border: 1px solid var(--bot-bubble-border);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       }
 
       .message-wrapper.user .bubble {
-        background: #f59e0b;
-        color: #0b0f17;
-        font-weight: 500;
-        border: 1px solid #d97706;
-        box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+        background: var(--user-bubble);
+        color: var(--user-text);
+        border-bottom-right-radius: 2px;
+      }
+
+      .message-wrapper.bot .bubble {
+        background: var(--bot-bubble);
+        color: var(--bot-text);
+        border: 1px solid var(--bot-bubble-border);
+        border-bottom-left-radius: 2px;
+      }
+
+      .bubble a {
+        color: var(--primary);
+        text-decoration: underline;
+      }
+
+      .bubble ul {
+        margin: 6px 0 6px 18px;
+        padding: 0;
+      }
+
+      .bubble li {
+        margin-bottom: 3px;
+      }
+
+      .bubble code {
+        background: rgba(0,0,0,0.06);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 12px;
       }
 
       .notice-bubble {
-        background: #fffbeb !important;
-        border: 1px solid #fef3c7;
-        color: #92400e !important;
-        font-size: 12px;
-        border-radius: var(--radius-bubble) !important;
-        padding: 10px 12px !important;
+        background: #fef2f2 !important;
+        border-color: #fecaca !important;
+        color: #991b1b !important;
+        font-size: 12.5px;
       }
 
-      /* Animated Typing Indicator */
+      /* Typing indicator */
       .typing-indicator {
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 10px 14px;
-        background: #ffffff;
+        padding: 8px 12px;
+        background: var(--bot-bubble);
         border: 1px solid var(--bot-bubble-border);
         border-radius: var(--radius-bubble);
         width: fit-content;
       }
 
       .typing-dot {
-        width: 5px;
-        height: 5px;
+        width: 6px;
+        height: 6px;
         background: #94a3b8;
         border-radius: 50%;
-        animation: bounce 1.4s infinite ease-in-out both;
+        animation: typing 1.4s infinite ease-in-out both;
       }
 
       .typing-dot:nth-child(1) { animation-delay: -0.32s; }
       .typing-dot:nth-child(2) { animation-delay: -0.16s; }
 
-      @keyframes bounce {
+      @keyframes typing {
         0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-        40% { transform: scale(1.1); opacity: 1; }
+        40% { transform: scale(1); opacity: 1; }
       }
 
-      /* Input Footer - Clean Minimalist Box */
+      /* Inline Form Cards (Lead Capture & Booking) */
+      .inline-card {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 6px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+
+      .inline-card h4 {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #0f172a;
+      }
+
+      .inline-card p {
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 8px;
+      }
+
+      .inline-card input, .inline-card textarea, .inline-card select {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 12.5px;
+        margin-bottom: 6px;
+        font-family: inherit;
+      }
+
+      .inline-card button {
+        width: 100%;
+        padding: 8px;
+        background: var(--primary);
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+
+      .inline-card button:hover {
+        opacity: 0.9;
+      }
+
+      /* Input Area */
       .panel-input-area {
         padding: 12px 14px;
         background: #ffffff;
@@ -344,42 +468,30 @@
       .chat-input {
         flex: 1;
         border: 1px solid #cbd5e1;
-        background: #ffffff;
         border-radius: 6px;
-        padding: 9px 12px;
+        padding: 8px 12px;
         font-size: 13px;
         color: var(--text-main);
         outline: none;
-        transition: border-color 0.15s, box-shadow 0.15s;
+        font-family: inherit;
       }
 
       .chat-input:focus {
-        border-color: #f59e0b;
-        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
-      }
-
-      .chat-input::placeholder {
-        color: #94a3b8;
-        font-size: 12.5px;
+        border-color: var(--primary);
       }
 
       .send-button {
         width: 36px;
         height: 36px;
         border-radius: 6px;
-        background: #f59e0b;
-        border: 1px solid #d97706;
-        color: #0b0f17;
+        background: var(--primary);
+        border: none;
+        color: #ffffff;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.15s, transform 0.1s;
         flex-shrink: 0;
-      }
-
-      .send-button:hover:not(:disabled) {
-        background: #fbbf24;
       }
 
       .send-button:disabled {
@@ -388,11 +500,32 @@
       }
 
       .send-button svg {
-        width: 15px;
-        height: 15px;
+        width: 16px;
+        height: 16px;
         fill: currentColor;
       }
-</style>
+
+      /* Mobile Full-Viewport Under 480px */
+      @media (max-width: 480px) {
+        .chat-panel {
+          width: 100vw;
+          height: 100%;
+          max-width: 100vw;
+          max-height: 100dvh;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          top: 0 !important;
+          border-radius: 0;
+          border: none;
+        }
+
+        .chat-launcher {
+          bottom: 16px;
+          ${isLeft ? 'left: 16px;' : 'right: 16px;'}
+        }
+      }
+    </style>
 
     <button class="chat-launcher" id="chatLauncher" aria-label="Open support chat">
       <svg class="launcher-icon chat-icon" viewBox="0 0 24 24">
@@ -409,10 +542,12 @@
     <div class="chat-panel" id="chatPanel" role="dialog" aria-hidden="true">
       <div class="panel-header">
         <div class="header-info">
-          <div class="bot-avatar">&#176;K</div>
+          <div class="bot-avatar" id="botAvatar">
+            ${avatarUrl ? `<img src="${avatarUrl}" alt="Avatar">` : chatTitle.charAt(0)}
+          </div>
           <div class="header-text">
-            <h3>Kelvyn Assistant</h3>
-            
+            <h3 id="panelTitle">${chatTitle}</h3>
+            <p><span class="online-dot"></span> Online</p>
           </div>
         </div>
         <button class="close-btn" id="closePanelBtn" aria-label="Close chat window">
@@ -425,7 +560,7 @@
 
       <div class="panel-messages" id="panelMessages">
         <div class="message-wrapper bot">
-          <div class="bubble">Welcome to Kelvyn. I'm here to answer questions regarding our wireless IoT sensors (Probe, Reefer, Vault), FDA 21 CFR Part 11 / GDP compliance, pricing tiers, and our 30-Day Free Pilot program. How can I help you today?</div>
+          <div class="bubble">${chatGreeting}</div>
         </div>
       </div>
 
@@ -434,7 +569,8 @@
           type="text" 
           id="chatInput" 
           class="chat-input" 
-          placeholder="Ask about sensors, compliance, or pilot..." 
+          placeholder="Ask a question..." 
+          maxlength="500"
           autocomplete="off" 
           aria-label="Your message"
         />
@@ -459,7 +595,6 @@
 
   let isSending = false;
 
-  // Session-scoped persistence keys (tab-specific: persists across navigations in same tab, resets on new tab)
   const IS_OPEN_KEY = `ai_chat_open_${clientId}`;
   const HISTORY_KEY = `ai_chat_history_${clientId}`;
 
@@ -486,7 +621,12 @@
 
     const bubble = document.createElement('div');
     bubble.className = isNotice ? 'bubble notice-bubble' : 'bubble';
-    bubble.textContent = text;
+
+    if (sender === 'bot' && !isNotice) {
+      bubble.innerHTML = renderSafeMarkdown(text);
+    } else {
+      bubble.textContent = text;
+    }
 
     wrapper.appendChild(bubble);
     messagesContainer.appendChild(wrapper);
@@ -502,7 +642,6 @@
     });
   }
 
-  // Restore open/closed state across navigations in same tab
   try {
     const wasOpen = sessionStorage.getItem(IS_OPEN_KEY) === 'true';
     if (wasOpen) {
@@ -569,241 +708,170 @@
   }
 
   /**
-   * Helper: Add item to Notebloom guest cart cookie and redirect
+   * Renders in-widget lead capture card for human handoff
    */
-  function addToCartAndRedirect(bookId, qty = 1, redirectUrl = '/cart') {
-    let cart = [];
-    try {
-      const match = document.cookie.match(/(?:^|; )notebloom_cart=([^;]*)/);
-      if (match) cart = JSON.parse(decodeURIComponent(match[1]));
-      if (!Array.isArray(cart)) cart = [];
-    } catch (_) {}
+  function renderLeadCaptureCard() {
+    if (shadow.getElementById('leadCaptureCard')) return;
 
-    const idx = cart.findIndex((it) => Number(it.book_id) === Number(bookId));
-    if (idx >= 0) {
-      cart[idx].quantity = (Number(cart[idx].quantity) || 1) + qty;
-    } else {
-      cart.push({ book_id: Number(bookId), quantity: qty, color: null });
-    }
+    const card = document.createElement('div');
+    card.className = 'inline-card';
+    card.id = 'leadCaptureCard';
+    card.innerHTML = `
+      <h4>Connect With Our Team</h4>
+      <p>Leave your details and a specialist will contact you directly.</p>
+      <input type="text" id="leadName" placeholder="Your Name" required />
+      <input type="text" id="leadContact" placeholder="Email or Phone Number" required />
+      <textarea id="leadMessage" placeholder="How can we help?" rows="2"></textarea>
+      <button type="button" id="submitLeadBtn">Send Message</button>
+      <div id="leadStatus" style="font-size:12px; margin-top:4px;"></div>
+    `;
 
-    // Set cookie for 30 days
-    document.cookie = `notebloom_cart=${encodeURIComponent(JSON.stringify(cart))}; path=/; max-age=2592000; SameSite=Lax`;
+    messagesContainer.appendChild(card);
+    scrollToBottom();
 
-    // Perform redirect after short visual confirmation
-    setTimeout(() => {
-      window.location.href = redirectUrl;
-    }, 1200);
+    const submitBtn = card.querySelector('#submitLeadBtn');
+    submitBtn.addEventListener('click', async () => {
+      const name = card.querySelector('#leadName').value.trim();
+      const contact = card.querySelector('#leadContact').value.trim();
+      const message = card.querySelector('#leadMessage').value.trim();
+      const statusDiv = card.querySelector('#leadStatus');
+
+      if (!name || !contact) {
+        statusDiv.style.color = '#dc2626';
+        statusDiv.textContent = 'Please provide both your name and contact info.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch(`${apiUrl}/lead`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, contact, message, client_id: clientId, session_id: sessionId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          card.innerHTML = `
+            <div style="color:#15803d; font-weight:600; font-size:13px;">✓ Message Received</div>
+            <p style="font-size:12px; margin-top:4px;">${data.message || 'Our team will contact you shortly.'}</p>
+          `;
+        } else {
+          statusDiv.style.color = '#dc2626';
+          statusDiv.textContent = data.error || 'Submission failed.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Message';
+        }
+      } catch (err) {
+        statusDiv.style.color = '#dc2626';
+        statusDiv.textContent = 'Connection error. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      }
+    });
   }
 
   /**
-   * Helper: Render interactive appointment booking card in chat
+   * Renders appointment booking card
    */
   function renderAppointmentBookingCard() {
+    if (shadow.getElementById('bookingCard')) return;
+
     const card = document.createElement('div');
-    card.className = 'chat-interactive-card';
+    card.className = 'inline-card';
+    card.id = 'bookingCard';
     card.innerHTML = `
-      <h4>📅 Book Custom Sourcing Consultation</h4>
-      <p style="font-size:12px; color:var(--text-muted);">Speak with our team regarding custom stationery, bulk orders, or wedding favors.</p>
-      <div class="form-field">
-        <label>Your Name *</label>
-        <input type="text" class="form-control" id="aptName" placeholder="e.g. Ayesha Khan" required />
-      </div>
-      <div class="form-field">
-        <label>WhatsApp / Phone *</label>
-        <input type="tel" class="form-control" id="aptPhone" placeholder="0333XXXXXXX" required />
-      </div>
-      <div class="form-field">
-        <label>Preferred Date / Time</label>
-        <input type="text" class="form-control" id="aptDate" placeholder="e.g. Next Monday 3 PM" />
-      </div>
-      <div class="form-field">
-        <label>Project Details / Notes</label>
-        <input type="text" class="form-control" id="aptNotes" placeholder="e.g. 100 customized notebooks with logo" />
-      </div>
-      <button type="button" class="form-submit-btn" id="aptSubmitBtn">Submit Booking Request 🌸</button>
-      <div id="aptStatus"></div>
+      <h4>Request Consultation / Appointment</h4>
+      <p>Select your preferred time slot. Our team will verify and confirm.</p>
+      <input type="text" id="bookName" placeholder="Your Name" required />
+      <input type="text" id="bookContact" placeholder="Phone or Email" required />
+      <input type="text" id="bookTime" placeholder="Preferred Date / Time" required />
+      <button type="button" id="submitBookBtn">Request Appointment</button>
+      <div id="bookStatus" style="font-size:12px; margin-top:4px;"></div>
     `;
 
     messagesContainer.appendChild(card);
     scrollToBottom();
 
-    const submitBtn = card.querySelector('#aptSubmitBtn');
+    const submitBtn = card.querySelector('#submitBookBtn');
     submitBtn.addEventListener('click', async () => {
-      const name = card.querySelector('#aptName').value.trim();
-      const phone = card.querySelector('#aptPhone').value.trim();
-      const date = card.querySelector('#aptDate').value.trim();
-      const message = card.querySelector('#aptNotes').value.trim();
-      const statusDiv = card.querySelector('#aptStatus');
+      const name = card.querySelector('#bookName').value.trim();
+      const contact = card.querySelector('#bookContact').value.trim();
+      const preferred_time = card.querySelector('#bookTime').value.trim();
+      const statusDiv = card.querySelector('#bookStatus');
 
-      if (!name || !phone) {
-        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Please enter your name and phone number.</p>';
+      if (!name || !contact) {
+        statusDiv.style.color = '#dc2626';
+        statusDiv.textContent = 'Please provide your name and contact details.';
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Saving Booking...';
+      submitBtn.textContent = 'Submitting Request...';
 
       try {
-        const res = await fetch(`${apiUrl}/appointments`, {
+        const res = await fetch(`${apiUrl}/booking`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, phone, date, message, session_id: sessionId }),
+          body: JSON.stringify({ name, contact, preferred_time, client_id: clientId, session_id: sessionId }),
         });
         const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
           card.innerHTML = `
-            <div style="color:#15803d; font-weight:600; font-size:13px;">✅ Consultation Request Submitted!</div>
-            <p style="font-size:12px; margin-top:4px;">We have received your details and will contact you via WhatsApp / phone shortly.</p>
-            <a href="${data.whatsappUrl}" target="_blank" class="wa-confirm-btn">📱 Confirm via WhatsApp</a>
+            <div style="color:#15803d; font-weight:600; font-size:13px;">✓ Request Submitted</div>
+            <p style="font-size:12px; margin-top:4px;">${data.message}</p>
           `;
         } else {
-          statusDiv.innerHTML = `<p style="color:#b91c1c; font-size:12px;">${data.error || 'Failed to submit'}</p>`;
+          statusDiv.style.color = '#dc2626';
+          statusDiv.textContent = data.error || 'Failed to submit booking.';
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Submit Booking Request 🌸';
+          submitBtn.textContent = 'Request Appointment';
         }
       } catch (err) {
-        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Connection error. Please try again.</p>';
+        statusDiv.style.color = '#dc2626';
+        statusDiv.textContent = 'Connection error. Please try again.';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Booking Request 🌸';
+        submitBtn.textContent = 'Request Appointment';
       }
     });
   }
 
-  /**
-   * Helper: Render interactive quick order form in chat
-   */
-  function renderQuickOrderCard() {
-    const card = document.createElement('div');
-    card.className = 'chat-interactive-card';
-    card.innerHTML = `
-      <h4>🛍️ Quick Order Form</h4>
-      <p style="font-size:12px; color:var(--text-muted);">Place an order directly from chat without going through full checkout!</p>
-      <div class="form-field">
-        <label>Full Name *</label>
-        <input type="text" class="form-control" id="ordName" placeholder="Your Name" required />
-      </div>
-      <div class="form-field">
-        <label>WhatsApp / Phone *</label>
-        <input type="tel" class="form-control" id="ordPhone" placeholder="0333XXXXXXX" required />
-      </div>
-      <div class="form-field">
-        <label>Delivery Address *</label>
-        <input type="text" class="form-control" id="ordAddress" placeholder="Street, Area, City" required />
-      </div>
-      <div class="form-field">
-        <label>Items & Quantity *</label>
-        <input type="text" class="form-control" id="ordItems" placeholder="e.g. 1 Scented Chocolate Notebook, 1 Diamond Pen" required />
-      </div>
-      <div class="form-field">
-        <label>Payment Method</label>
-        <select class="form-control" id="ordPayment">
-          <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-          <option value="Bank Transfer">Advance Bank Transfer</option>
-          <option value="JazzCash / EasyPaisa">JazzCash / EasyPaisa</option>
-        </select>
-      </div>
-      <button type="button" class="form-submit-btn" id="ordSubmitBtn">Place Quick Order 📦</button>
-      <div id="ordStatus"></div>
-    `;
-
-    messagesContainer.appendChild(card);
-    scrollToBottom();
-
-    const submitBtn = card.querySelector('#ordSubmitBtn');
-    submitBtn.addEventListener('click', async () => {
-      const name = card.querySelector('#ordName').value.trim();
-      const phone = card.querySelector('#ordPhone').value.trim();
-      const address = card.querySelector('#ordAddress').value.trim();
-      const items = card.querySelector('#ordItems').value.trim();
-      const paymentMethod = card.querySelector('#ordPayment').value;
-      const statusDiv = card.querySelector('#ordStatus');
-
-      if (!name || !phone || !address || !items) {
-        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Please fill in all required fields.</p>';
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Recording Order...';
-
-      try {
-        const res = await fetch(`${apiUrl}/quick-order`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, phone, address, items, paymentMethod, session_id: sessionId }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          card.innerHTML = `
-            <div style="color:#15803d; font-weight:600; font-size:13px;">🎉 Order ${data.orderCode} Confirmed!</div>
-            <p style="font-size:12px; margin-top:4px;">Thank you! We have logged your order and will confirm it before dispatch.</p>
-            <a href="${data.whatsappUrl}" target="_blank" class="wa-confirm-btn">📱 Send WhatsApp Confirmation</a>
-          `;
-        } else {
-          statusDiv.innerHTML = `<p style="color:#b91c1c; font-size:12px;">${data.error || 'Failed to submit'}</p>`;
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Place Quick Order 📦';
-        }
-      } catch (err) {
-        statusDiv.innerHTML = '<p style="color:#b91c1c; font-size:12px;">Connection error. Please try again.</p>';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Place Quick Order 📦';
-      }
-    });
-  }
-
-  /**
-   * Action Parser: Processes [[ACTION:...]] tags from assistant stream
-   */
-  function handleDetectedActions(rawText) {
-    // 1. Check for NAVIGATE directive: [[ACTION:NAVIGATE:<url>]]
-    const navMatch = rawText.match(/\[\[ACTION:NAVIGATE:(.*?)\]\]/);
-    if (navMatch) {
-      const targetUrl = navMatch[1].trim();
-      const banner = document.createElement('div');
-      banner.className = 'action-banner';
-      banner.innerHTML = `<span>🌸 Taking you to <strong>${targetUrl}</strong> in a moment...</span>`;
-      messagesContainer.appendChild(banner);
-      scrollToBottom();
-      setTimeout(() => {
-        window.location.href = targetUrl;
-      }, 1400);
+  function handleDetectedTriggers(text) {
+    const lower = text.toLowerCase();
+    if (
+      lower.includes("get you in touch with the team") ||
+      lower.includes("connect directly with our solutions team") ||
+      lower.includes("leave your details") ||
+      lower.includes("contact our team directly") ||
+      lower.includes("human agent") ||
+      lower.includes("[[action:show_form:lead]]")
+    ) {
+      renderLeadCaptureCard();
     }
 
-    // 2. Check for ADD_TO_CART directive: [[ACTION:ADD_TO_CART:<json>]]
-    const cartMatch = rawText.match(/\[\[ACTION:ADD_TO_CART:(.*?)\]\]/);
-    if (cartMatch) {
-      try {
-        const itemData = JSON.parse(cartMatch[1]);
-        const banner = document.createElement('div');
-        banner.className = 'action-banner';
-        banner.innerHTML = `<span>🛒 Added <strong>${itemData.name}</strong> to your cart! Taking you to checkout...</span>`;
-        messagesContainer.appendChild(banner);
-        scrollToBottom();
-        addToCartAndRedirect(itemData.bookId, itemData.qty || 1, itemData.redirect || '/cart');
-      } catch (e) {
-        console.error('Failed to parse cart directive:', e);
-      }
-    }
-
-    // 3. Check for SHOW_FORM:booking
-    if (rawText.includes('[[ACTION:SHOW_FORM:booking]]')) {
+    if (
+      lower.includes("book an appointment") ||
+      lower.includes("schedule a consultation") ||
+      lower.includes("book a consultation") ||
+      lower.includes("[[action:show_form:booking]]")
+    ) {
       renderAppointmentBookingCard();
     }
-
-    // 4. Check for SHOW_FORM:quick_order
-    if (rawText.includes('[[ACTION:SHOW_FORM:quick_order]]')) {
-      renderQuickOrderCard();
-    }
   }
 
   /**
-   * Form submission and SSE stream consumption
+   * Chat Form Submission
    */
   chatForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = chatInput.value.trim();
     if (!message || isSending) return;
+
+    if (message.length > 500) {
+      appendMessage('bot', 'Please keep your message under 500 characters so I can best assist you.', true);
+      return;
+    }
 
     appendMessage('user', message);
     chatInput.value = '';
@@ -822,12 +890,13 @@
         body: JSON.stringify({
           message,
           session_id: sessionId,
+          client_id: clientId,
         }),
       });
 
       if (response.status === 403) {
         removeTypingIndicator();
-        appendMessage('bot', '⚠️ Chat is currently disabled for this website domain. Please contact support.', true);
+        appendMessage('bot', '⚠️ Chat is disabled for this website domain. Please check allowed origins.', true);
         return;
       }
 
@@ -844,7 +913,12 @@
 
       if (!response.ok) {
         removeTypingIndicator();
-        appendMessage('bot', 'Sorry, our chat service encountered an error. Please try again in a moment.', true);
+        let errMsg = 'Our chat service encountered an error. Please try again in a moment.';
+        try {
+          const errData = await response.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch (_) {}
+        appendMessage('bot', errMsg, true);
         return;
       }
 
@@ -879,10 +953,7 @@
                 botBubble = appendMessage('bot', '');
               }
               accumulatedText += parsed.text;
-
-              // Hide raw action tags while streaming
-              const cleanText = accumulatedText.replace(/\[\[ACTION:.*?\]\]/g, '').trim();
-              botBubble.textContent = cleanText;
+              botBubble.innerHTML = renderSafeMarkdown(accumulatedText);
               scrollToBottom();
             } else if (parsed.error) {
               if (!botBubble) removeTypingIndicator();
@@ -894,16 +965,15 @@
 
       removeTypingIndicator();
 
-      if (botBubble && botBubble.textContent) {
-        chatHistory.push({ sender: 'bot', text: botBubble.textContent, isNotice: false });
+      if (botBubble && accumulatedText) {
+        chatHistory.push({ sender: 'bot', text: accumulatedText, isNotice: false });
         saveChatHistory();
       }
 
-      // Trigger any actions found in the complete response
-      handleDetectedActions(accumulatedText);
+      handleDetectedTriggers(accumulatedText);
 
     } catch (networkErr) {
-      console.error('[Chat Widget] Connection failed:', networkErr);
+      console.error('[Chat Widget] Connection error:', networkErr);
       removeTypingIndicator();
       appendMessage('bot', 'Unable to reach the server. Please check your internet connection.', true);
     } finally {
@@ -915,5 +985,3 @@
   });
 
 })();
-
-
