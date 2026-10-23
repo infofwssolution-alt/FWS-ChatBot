@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: notebloom-chatbot-backend
+    name: ai-chatbot-backend
     runtime: node
     plan: starter
-    region: singapore # Closest low-latency region to Pakistan
+    region: singapore
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
@@ -23,5 +23,13 @@ services:
         sync: false
       - key: RATE_LIMIT_PER_HOUR
         value: "20"
+      - key: RATE_LIMIT_PER_IP_HOUR
+        value: "60"
+      - key: DAILY_CAP_PER_CLIENT
+        value: "500"
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: LEAD_WEBHOOK_URL
+        sync: false
       - key: GROQ_MODEL
         value: "openai/gpt-oss-120b"

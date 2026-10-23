@@ -1,51 +1,62 @@
-# AI Chat & FAQ Bot Backend + Embeddable Widget
+# Multi-Demo AI Chatbot Backend & Embeddable Widget
 
-A production-ready, full-stack AI customer support solution featuring a high-performance **Node.js/Express** streaming backend and a zero-dependency **Vanilla JS** widget that embeds on any website via a single `<script>` tag.
+A production-hardened AI customer support backend and zero-dependency Vanilla JS embeddable widget designed for client demos and live deployments.
 
----
-
-## 🚀 Features
-
-- **⚡ Real-Time SSE Token Streaming**: Streams Groq LLM responses token-by-token directly to the user's browser using Server-Sent Events (`text/event-stream`).
-- **🛡️ Shadow DOM Widget**: The embeddable widget is rendered entirely inside a Shadow DOM tree, completely isolating styles and ensuring client host CSS can never distort or conflict with the widget.
-- **🔒 Origin Allowlist Validation**: Strict CORS and Origin verification middleware that rejects unauthorized third parties with HTTP `403` **before** touching Redis or the LLM.
-- **⏱️ Upstash Redis Rate Limiting**: Rolling 1-hour session window cap via Upstash Redis REST API (`@upstash/redis`), returning friendly non-technical notifications upon hitting limits (HTTP `429`).
-- **🧠 Vector RAG Retrieval**: Computes cosine similarity between queries and indexed MongoDB knowledge chunks using local 384-dimensional dense embeddings (`@xenova/transformers` with `all-MiniLM-L6-v2`), costing $0 for embeddings.
-- **🎯 Hallucination Prevention System Prompt**: Constrains the LLM to only answer from retrieved knowledge; triggers an explicit escalation handoff (*"I'm not sure, let me get you in touch with the team."*) when knowledge is absent.
-- **📝 Audit & Conversation Logging**: Persists `session_id`, `message`, `reply`, and `timestamp` into MongoDB for continuous analytics and support escalation.
-- **🩺 Health Check Endpoint**: `GET /health` returns `{ "status": "ok" }`.
+Features **Node.js/Express** with Server-Sent Events (SSE) streaming, **Groq** LLM inference, local dense vector embeddings via **@xenova/transformers** ($0 embedding cost), **Upstash Redis** rate limiting and daily caps, and **MongoDB** for knowledge and conversation logging.
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Architecture & Request Lifecycle
 
 ```
-├── .env.example               # Environment variable template
-├── .gitignore                  # Git ignore rules (node_modules, .env)
-├── package.json               # Scripts & dependencies (ES modules)
-├── README.md                  # Setup & architecture guide
-├── src/
-│   ├── index.js               # Express entry point & startup validation
-│   ├── db/
-│   │   └── connect.js         # MongoDB connection & pool management
-│   ├── middleware/
-│   │   ├── originCheck.js     # Strict Origin header validation (runs 1st)
-│   │   └── rateLimit.js       # Upstash Redis rolling rate limiter (runs 2nd)
-│   ├── rag/
-│   │   ├── embeddings.js      # Local sentence transformer & cosine similarity
-│   │   ├── groq.js            # Groq streaming completion & system prompt
-│   │   ├── retrieve.js        # Knowledge base query retrieval (Top 3)
-│   │   └── seed.js            # Seed script to vectorize and index FAQs
-│   └── routes/
-│       └── chat.js            # Main POST /chat SSE endpoint & DB logger
-└── widget/
-    ├── widget.js              # Standalone embeddable frontend widget
-    └── demo.html              # Local demo test harness
+[Visitor / Browser]
+       │
+       ▼
+[Shadow DOM Widget] ─── (Sends message, session_id, client_id)
+       │
+       ▼
+[1. Origin Validation Middleware]  (403 if origin not in ALLOWED_ORIGINS)
+       │
+       ▼
+[2. Server-side Input Validation] (400 if message > 500 chars or missing session_id)
+       │
+       ▼
+[3. Multi-Tier Rate Limiting]     (429 if session cap, IP limit, or daily client cap reached)
+       │
+       ▼
+[4. RAG Retrieval]                (Vector cosine similarity scoped strictly by client_id)
+       │
+       ▼
+[5. Dynamic System Prompt]        (Loaded from /prompts/<client_id>.md with default fallback)
+       │
+       ▼
+[6. Context & History Assembly]   (Appends last 6 turns of session history)
+       │
+       ▼
+[7. Groq Token Streaming]         (Streams SSE tokens chunk-by-chunk to widget)
+       │
+       ▼
+[8. Audit & Analytics Logging]    (Stores session_id, client_id, message, reply in MongoDB)
 ```
+
+### Client ID Scoping
+Every knowledge chunk and conversation log document contains a `client_id` field. During retrieval, queries are strictly filtered by `{ client_id: clientId }`, ensuring that multiple client demos sharing the same MongoDB database never cross-contaminate or return each other's content.
+
+### Demo Workflow (Seed -> Record -> Reset)
+1. **Seed demo data**:
+   ```bash
+   npm run seed -- --client=demo-brand --clear
+   ```
+2. **Present or record demo**: Open `http://localhost:3000/widget/demo.html` with `data-client-id="demo-brand"`.
+3. **Reset after demo**:
+   ```bash
+   npm run reset -- --client=demo-brand
+   ```
+   This clears the client's knowledge base, deletes their conversation history, and resets their Redis rate limits.
 
 ---
 
-## 🛠️ Quick Start & Setup
+## 🛠️ Quick Start
 
 ### 1. Install Dependencies
 ```bash
@@ -57,98 +68,83 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Fill in your credentials:
-```ini
-PORT=3000
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/chatbot_db?retryWrites=true&w=majority
-GROQ_API_KEY=gsk_your_groq_api_key_here
-UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_upstash_token
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://yourclientdomain.com
-RATE_LIMIT_PER_HOUR=20
+Ensure all required variables are set:
+- `PORT`
+- `MONGODB_URI`
+- `GROQ_API_KEY`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- `ALLOWED_ORIGINS`
+- `RATE_LIMIT_PER_HOUR`
+- `RATE_LIMIT_PER_IP_HOUR`
+- `DAILY_CAP_PER_CLIENT`
+- `ADMIN_TOKEN`
+
+### 3. Run Tests
+Verify origin checking, message length validation, rate limiter, and client isolation:
+```bash
+npm test
 ```
 
-### 3. Seed Knowledge Base
-Vectorize and index the knowledge base into MongoDB:
+### 4. Start Server
 ```bash
-npm run seed
-```
+# Production
+npm start
 
-### 4. Start Development Server
-```bash
+# Development (with nodemon)
 npm run dev
 ```
 
-### 5. Open the Demo Page
-Navigate to:
+---
+
+## 📋 Embeddable Widget Customization
+
+Embed the widget into any site using a single `<script>` tag:
+
+```html
+<script 
+  src="https://your-chatbot-url.com/widget/widget.js"
+  data-api-url="https://your-chatbot-url.com"
+  data-client-id="yourclient"
+  data-title="Customer Support"
+  data-greeting="Hi there! How can I help you today?"
+  data-color="#2563eb"
+  data-position="bottom-right"
+  defer>
+</script>
 ```
-http://localhost:3000/widget/demo.html
-```
-Click the floating chat bubble in the bottom right corner to test the widget.
+
+### Supported Data Attributes
+- `data-api-url`: Base URL of the deployed chatbot backend.
+- `data-client-id`: Client demo identifier (default: `"default"`).
+- `data-title`: Chat panel header title (default: `"Support Assistant"`).
+- `data-greeting`: Initial greeting bubble text.
+- `data-color`: Primary brand hex color for launcher, buttons, and user bubble.
+- `data-avatar-url`: Optional image URL for bot avatar.
+- `data-position`: `"bottom-right"` (default) or `"bottom-left"`.
 
 ---
 
-## 📋 Environment Variables Reference for Render / Railway
+## 🔒 Automated vs. Non-Automated Capabilities
 
-Paste these directly into your Render or Railway Service Settings under **Environment Variables**:
-
-| Variable Name | Description | Example / Note |
+| Capability | Status | Implementation Details |
 | :--- | :--- | :--- |
-| `MONGODB_URI` | Full MongoDB connection string | `mongodb://user:pass@shard1,shard2/chatbot_db?ssl=true...` |
-| `GROQ_API_KEY` | API key from console.groq.com | `gsk_...` |
-| `UPSTASH_REDIS_REST_URL` | REST endpoint from console.upstash.com | `https://...upstash.io` |
-| `UPSTASH_REDIS_REST_TOKEN` | REST token from console.upstash.com | `gQAAAA...` |
-| `ALLOWED_ORIGINS` | Comma-separated allowed frontend origins | `https://notebloom.shop,https://www.notebloom.shop` |
-| `RATE_LIMIT_PER_HOUR` | Max allowed messages per session per hour | `20` |
-| `GROQ_MODEL` | (Optional) LLM Model on Groq | `openai/gpt-oss-120b` |
-
-*(Note: Render and Railway automatically inject the `PORT` variable into the runtime environment. The application dynamically reads `process.env.PORT` on boot, so you do NOT need to set PORT manually in their dashboards).*
+| **FAQ & Knowledge Retrieval** | ✅ Fully Automated | Semantic search via 384-dimensional dense vectors against client's knowledge base. |
+| **Product Recommendations** | ✅ Fully Automated | Answers strictly from indexed catalog chunks. Will never invent unlisted items. |
+| **Escalation / Lead Capture** | ✅ Semi-Automated | When the bot cannot answer or the user asks for a human, an in-chat form captures name and contact info, saves to MongoDB `leads`, and optionally posts to `LEAD_WEBHOOK_URL`. |
+| **Appointment Booking** | ℹ️ Assisted Request | The widget collects appointment details and saves to MongoDB `bookings` with status `pending_confirmation` and forwards to `LEAD_WEBHOOK_URL`. The bot **does not** automatically confirm live calendar slots; team confirmation is required. |
+| **Order Modification / Stock** | ❌ Manual Escalation | Guardrails prevent the bot from fabricating live stock or accessing customer order databases. Visitors are instructed to contact support directly. |
 
 ---
 
-## 🌐 Embedding in Next.js Storefront (e.g. Notebloom)
+## 🛡️ Protected Admin Endpoint
 
-In your Next.js App Router storefront (`app/layout.tsx`), load the widget site-wide:
+Inspect conversations securely across any client:
 
-```tsx
-import Script from 'next/script';
+```bash
+# Retrieve recent conversations as JSON
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" "http://localhost:3000/admin/conversations?client_id=demo-brand&limit=50"
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        {children}
-        {/* Notebloom AI Chat Widget */}
-        <Script
-          src="https://REPLACE_WITH_REAL_DEPLOYED_URL/widget/widget.js"
-          data-api-url="https://REPLACE_WITH_REAL_DEPLOYED_URL"
-          data-client-id="notebloom"
-          strategy="lazyOnload"
-        />
-      </body>
-    </html>
-  );
-}
+# Export conversations as CSV
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" "http://localhost:3000/admin/conversations?client_id=demo-brand&format=csv" -o conversations.csv
 ```
-
----
-
-## 🔒 Security & Architecture Decisions
-
-### Why Origin Validation Runs Before Rate Limiting
-1. **Financial & Quota Protection**: Upstash Redis commands and Groq tokens cost credits. If an unapproved origin spams requests, checking origin first drops the request immediately without consuming Redis credits or invoking embeddings/LLMs.
-2. **DDoS Protection**: An attacker can easily spoof session IDs to bypass rate limits. Rejecting unauthorized origins at the gateway level protects database connections and computational resources.
-3. **Multi-Tenant Isolation**: Ensures only authorized domains can utilize the service.
-
-### Why `sessionStorage` instead of `localStorage`
-- **Session Lifecycle**: `sessionStorage` clears when the browser tab/window closes, ensuring that temporary visitor sessions do not linger indefinitely across months.
-- **Device Privacy**: Prevents subsequent users on shared/public computers from inheriting conversation history or rate limit states.
-- **Clean Rate Limit Boundaries**: Prevents visitors from being permanently locked out by a stale ID.
-
----
-
-## 🚢 Deployment Notes (Render, Railway, VPS)
-This backend is designed as a persistent, long-running Node.js process using native Server-Sent Events (`text/event-stream`). It does **not** rely on any Vercel-specific serverless abstractions or Edge runtimes. It is 100% compatible with:
-- **Render** (Web Service)
-- **Railway** (Node.js Service)
-- **Fly.io** / **DigitalOcean App Platform** / **AWS ECS** / **Docker**

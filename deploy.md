@@ -1,83 +1,69 @@
-I'm taking the chat widget project I already built and deploying it for 
-real, for my own live e-commerce store, Notebloom (Next.js storefront on 
-Vercel, backend for this bot going on Render/Railway). Do the following:
+# Deployment & Operations Guide
 
-=== 1. SEED CONTENT STRUCTURE ===
+## Hosting on Render or Railway
 
-Update /src/rag/seed.js so it reads from a plain JSON file, 
-/src/rag/data/notebloom-knowledge.json, structured as an array like:
+This Express.js backend can be deployed cleanly to Render (using `render.yaml`) or Railway as a long-running Node.js web service.
 
-[
-  { "text": "..." },
-  { "text": "..." }
-]
+### 1. Build and Start Commands
+- **Build Command**: `npm install`
+- **Start Command**: `npm start`
+- The server dynamically listens on the port supplied in the `PORT` environment variable by Render/Railway (fallback to `3000` locally).
 
-Create that JSON file with PLACEHOLDER entries in these categories so I 
-can see the expected format and just replace the text:
-- Product categories and what we sell (placeholder — I'll fill in real 
-  Notebloom products)
-- Standard/listed pricing for regular products (placeholder — NOT 
-  custom-sourcing pricing, that stays out of the bot entirely)
-- Shipping and delivery info (placeholder)
-- Return/exchange policy (placeholder)
-- How to place an order — website vs WhatsApp (placeholder)
-- Common FAQ (placeholder)
+### 2. Startup Optimization: Model Warmup
+The local sentence embedding model (`all-MiniLM-L6-v2`) is pre-warmed on server boot inside `src/index.js`. This guarantees that the first user interaction has near-zero latency and does not suffer a cold-start embedding lag.
 
-Leave clear "REPLACE ME" markers in each placeholder so it's obvious 
-what I still need to write myself.
+### 3. Preventing Free-Tier Sleep & Latency
+To prevent cloud hosting free-tier instances (such as Render) from spinning down during inactivity:
+- Point an uptime monitoring service (such as BetterStack, UptimeRobot, or Cron-job.org) to ping `GET /health` every 5 to 10 minutes.
+- The `/health` endpoint performs an active MongoDB ping (`{ ping: 1 }`), ensuring both the web process and database connections remain warm and responsive.
 
-=== 2. SYSTEM PROMPT — NOTEBLOOM-SPECIFIC GUARDRAILS ===
+### 4. Required Environment Variables
 
-Update the system prompt in /src/rag/groq.js to explicitly instruct the 
-model to:
-- Only quote pricing that appears in the retrieved knowledge base chunks
-- NEVER quote or estimate pricing for custom/bulk sourcing orders — 
-  always respond that custom orders are priced individually and direct 
-  the customer to contact the team directly
-- NEVER claim to know current stock/inventory levels — say stock can 
-  change and to check the product page or ask the team to confirm
-- NEVER give an update on an existing order's status — say it can't 
-  access order details and to reach out via [contact method] with their 
-  order code
-- Otherwise behave exactly as before: answer only from retrieved 
-  content, say "let me get you in touch with the team" when unsure
+Configure these in your Render or Railway dashboard under **Environment Variables**:
 
-Show me the complete, final system prompt text as its own section, 
-separate from the code block.
+| Variable | Description |
+| :--- | :--- |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `GROQ_API_KEY` | Groq Cloud API key |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST Token |
+| `ALLOWED_ORIGINS` | Comma-separated allowed frontend origins (e.g. `https://yourdomain.com,http://localhost:3000`) |
+| `RATE_LIMIT_PER_HOUR` | Max allowed messages per session per hour (default: `20`) |
+| `RATE_LIMIT_PER_IP_HOUR` | Max allowed requests per IP per hour (default: `60`) |
+| `DAILY_CAP_PER_CLIENT` | Max global messages per client_id per day (default: `500`) |
+| `ADMIN_TOKEN` | Secret Bearer token to protect `GET /admin/conversations` |
+| `LEAD_WEBHOOK_URL` | *(Optional)* Outgoing webhook for real-time lead and booking capture |
+| `GROQ_MODEL` | *(Optional)* LLM model (default: `openai/gpt-oss-120b`) |
 
-=== 3. DEPLOYMENT CONFIG ===
+---
 
-Add whatever config file Render or Railway needs to deploy this 
-Express app cleanly (e.g. a render.yaml or the equivalent for Railway — 
-pick whichever this project doesn't already assume, and tell me which 
-you chose and why). It should:
-- Run `npm install` then `npm start` (add a "start" script to 
-  package.json if there isn't one, distinct from the "dev" one using 
-  nodemon)
-- NOT hardcode the PORT — read it from the platform's own env var if 
-  Render/Railway inject one, falling back to my .env value locally
-- List every environment variable this project needs, in a clear 
-  section of the README, so I know exactly what to paste into 
-  Render/Railway's dashboard (MONGODB_URI, GROQ_API_KEY, 
-  UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, ALLOWED_ORIGINS, 
-  RATE_LIMIT_PER_HOUR)
+## Widget Integration into Next.js Storefront
 
-=== 4. WIDGET INTEGRATION INTO THE NEXT.JS STOREFRONT ===
+In your Next.js App Router root layout (`app/layout.tsx`):
 
-Write the exact snippet I need to add to Notebloom's root layout 
-(app/layout.tsx, Next.js App Router) to load the widget site-wide, using 
-Next.js's <Script> component with strategy="lazyOnload" (explain briefly 
-why lazyOnload is the right choice here vs other strategies). Use 
-placeholder values for data-api-url and data-client-id and mark them 
-clearly as "REPLACE WITH REAL DEPLOYED URL" — I'll fill those in once 
-the backend has a live domain.
+```tsx
+import Script from 'next/script';
 
-=== 5. AFTER GENERATING EVERYTHING ===
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        {/* Embeddable AI Chat Widget */}
+        <Script
+          src="https://REPLACE_WITH_REAL_DEPLOYED_URL/widget/widget.js"
+          data-api-url="https://REPLACE_WITH_REAL_DEPLOYED_URL"
+          data-client-id="yourclient"
+          data-title="Customer Support"
+          data-color="#2563eb"
+          data-greeting="Hi! How can we assist you today?"
+          strategy="lazyOnload"
+        />
+      </body>
+    </html>
+  );
+}
+```
 
-1. List, as a checklist, every placeholder I still need to fill in 
-   myself before this goes live (JSON content, ALLOWED_ORIGINS value, 
-   widget script src/data attributes) — nothing should silently ship 
-   with placeholder text.
-2. Confirm: does the updated system prompt still say what happens when 
-   a question falls outside all of these categories entirely? Show me 
-   that fallback line specifically.
+### Why `strategy="lazyOnload"`?
+`lazyOnload` tells Next.js to inject and execute the chat widget script after all page critical resources have loaded during idle browser time. This guarantees that the widget never blocks First Contentful Paint (FCP) or Largest Contentful Paint (LCP) for your main storefront.
