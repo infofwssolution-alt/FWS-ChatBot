@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node src/rag/seed.js"
+    "seed": "node src/rag/seed.js",
+    "reset": "node src/reset.js",
+    "test": "node test/suite.test.js"
   },
   "keywords": [
     "chatbot",

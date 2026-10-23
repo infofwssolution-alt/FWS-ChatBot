@@ -1,0 +1,92 @@
+[
+  {
+    "text": "Kelvyn is a real-time cold-chain telemetry and compliance infrastructure company founded in 2022. It provides wireless IoT temperature and humidity sensors, cloud observability dashboards, instant multi-channel excursion alerts, and automated compliance reports for pharmaceutical distributors, clinical vaccine logistics, and refrigerated food warehouses."
+  },
+  {
+    "text": "The company's core mission is captured by its brand tagline: 'Every degree, accounted for.' Kelvyn operates dual headquarters in Zürich, Switzerland (Neugasse 29, 8005 Zürich) for sensor R&D and hardware engineering, and Cambridge, Massachusetts (245 Main Street, 11th Floor, Cambridge, MA 02142) for North American operations."
+  },
+  {
+    "text": "Kelvyn's leadership team includes Co-Founder and CEO Dr. Elena Lindqvist, former Head of Thermal Systems at ETH Zürich with 14 years architecting pharmaceutical cold chains, and Co-Founder and CTO Marcus Keller, formerly Lead Embedded Firmware Architect at Sensirion specializing in ultra-low power Sub-GHz radio networks."
+  },
+  {
+    "text": "The Kelvyn Probe is an ultra-low temperature cryogenic wireless sensor designed for mRNA vaccines, biologics, blood banks, and liquid nitrogen freezers. It covers an operating range of -80°C to +30°C with NIST-traceable calibrated accuracy of ±0.1°C, powered by an internal LiSOCl2 primary cell delivering 5 years of battery life."
+  },
+  {
+    "text": "Kelvyn Probe utilizes LoRaWAN and NB-IoT connectivity with a local Bluetooth LE diagnostic tap. Encased in an IP68 fully submersible waterproof housing measuring 112 × 48 × 26 mm, it includes an external medical-grade PT1000 platinum RTD probe capable of passing through freezer seals without breaking the thermal barrier."
+  },
+  {
+    "text": "The Kelvyn Reefer is an in-transit freight and intermodal cold-transport telemetry unit designed for refrigerated trucks, sea containers, and air cargo shippers. It operates from -30°C to +50°C with ±0.15°C temperature accuracy and ±2% RH relative humidity precision."
+  },
+  {
+    "text": "Kelvyn Reefer features a 180-day rechargeable lithium backup battery with continuous sync to 12V/24V vehicle power harnesses or solar panels. It communicates over global LTE-M / Cat-M1 networks with multi-GNSS satellite positioning and local fallback mesh, packed in an IP67 dust and high-pressure spray resistant enclosure."
+  },
+  {
+    "text": "The Kelvyn Reefer complies with FAA DO-160 Section 21 standards for automated flight-mode sensor disablement during aircraft takeoff. It also incorporates optical door-open detection and 3-axis shock/impact measurement to correlate physical transit incidents with thermal spikes."
+  },
+  {
+    "text": "The Kelvyn Vault is a stationary warehouse and walk-in cold room sensor node designed for central distribution centers and hospital pharmacies. Operating from -40°C to +70°C with ±0.1°C accuracy, it runs on user-replaceable commercial AA lithium cells providing up to 10 years of maintenance-free operation."
+  },
+  {
+    "text": "Kelvyn Vault connects over a long-range Sub-GHz self-healing mesh (868/915 MHz) that penetrates dense warehouse steel pallet racking up to 1.2 km indoors. It includes an exterior e-paper status badge for floor personnel and an annual hot-swappable pre-calibrated sensor cap design."
+  },
+  {
+    "text": "Every Kelvyn sensor is factory-calibrated against NIST-traceable reference standards to ±0.1°C accuracy and ships with an ISO/IEC 17025 accredited calibration certificate. Under the Advance Hot-Swap program, pre-calibrated replacement sensor heads arrive 60 days before annual certificate expiration with prepaid return labels."
+  },
+  {
+    "text": "All Kelvyn sensors feature onboard industrial NOR flash memory storing between 30,000 and 60,000 timestamped readings locally. When vehicles traverse cellular dead zones or airplanes fly intercontinental routes, data is safely buffered and automatically uploaded in chronological order upon reconnect."
+  },
+  {
+    "text": "Kelvyn operates on an all-inclusive Hardware-as-a-Service (HaaS) model with zero upfront capital expenditure. Hardware devices, global cellular data connectivity, cloud platform access, annual NIST calibration swaps, and lifetime advance warranty replacements are bundled into a predictable per-sensor monthly fee."
+  },
+  {
+    "text": "The Starter pricing plan costs $18 per sensor per month on monthly billing, or $14 per sensor per month on annual billing. It supports up to 25 sensors, 15-minute reporting intervals, SMS and email alerts, 1-year cryptographic audit log retention, and 8×5 email support with a 4-hour response SLA."
+  },
+  {
+    "text": "The Growth pricing plan costs $14 per sensor per month on monthly billing, or $11 per sensor per month on annual billing. It covers 26 to 250 sensors, 2-minute reporting intervals, 3 years of 21 CFR Part 11 compliant data retention, triple-channel alert escalation (SMS, WhatsApp, phone calls), REST API webhooks, and 24/7 priority support with a 1-hour SLA."
+  },
+  {
+    "text": "The Enterprise plan offers custom pricing for 250+ sensors with continuous sub-minute telemetry, 10-year immutable archives, dedicated Solutions Architects, on-site annual calibration audits, custom ERP integrations (SAP, Manhattan, Oracle), and a financially backed 99.99% uptime SLA."
+  },
+  {
+    "text": "Kelvyn offers a 30-Day Free Pilot program for qualified pharmaceutical distributors, healthcare networks, and cold logistics carriers. The pilot includes 10 pre-configured wireless sensors and a cellular gateway deployed in active facilities with full software access and zero financial obligation."
+  },
+  {
+    "text": "All active Kelvyn subscriptions include an unconditional lifetime hardware warranty. If a sensor experiences hardware degradation or physical damage, advance replacements are dispatched with priority overnight freight."
+  },
+  {
+    "text": "Kelvyn predictive thermal alerting uses rate-of-rise velocity algorithms to evaluate temperature deltas. If a cold room door is left ajar or a compressor trips, the platform initiates an automated escalation ladder (SMS to mobile push to voice calls) before cargo crosses regulatory safety boundaries."
+  },
+  {
+    "text": "To prevent false alarms during normal operations, Kelvyn allows operators to configure alarm delay timers and door-sensor correlation. Brief thermal rises from standard freezer loading do not dispatch emergency alerts unless excursions exceed sustained regulatory threshold windows."
+  },
+  {
+    "text": "Kelvyn enforces strict compliance with FDA 21 CFR Part 11 and EU Annex 11. Platform features include computerized system validation (CSV), digital electronic signatures, cryptographic write-once audit logs, SHA-256 tamper-evident record hashing, and automatic session timeouts."
+  },
+  {
+    "text": "The platform automatically calculates Mean Kinetic Temperature (MKT) across customizable batch and lot timeframes according to the Haynes equation (USP <1079>). This allows QA teams to evaluate the exact biological shelf-life impact of minor thermal fluctuations."
+  },
+  {
+    "text": "Kelvyn is SOC 2 Type II certified and ISO 27001:2022 certified. All telemetry data is encrypted in transit using TLS 1.3 with strict HSTS and at rest using AES-256 with encryption keys managed in Hardware Security Modules (HSM)."
+  },
+  {
+    "text": "Customer telemetry data is 100% owned by the customer and is never shared or monetized. Enterprise clients can configure automated daily cryptographic exports to private Amazon S3 buckets or Microsoft Azure Blob containers."
+  },
+  {
+    "text": "Apex Biopharma Distribution deployed 850 Kelvyn Reefer and Vault sensors across 14 central hubs and 420 refrigerated vehicles. Apex reduced annual batch excursion spoilage losses by 38% within 6 months and reduced mean incident resolution time to under 4 minutes."
+  },
+  {
+    "text": "Nordic Cryo Logistics deployed the Kelvyn Probe system across 65 ultra-cold mobile pods transporting pediatric mRNA vaccines at -80°C. Nordic achieved zero temperature breaches across 1.2 million delivered doses and a 100% first-time pass rate across 42 regulatory health inspections."
+  },
+  {
+    "text": "FreshVault Cold Storage installed Kelvyn Vault nodes across 2.8 million square feet of refrigerated warehousing, eliminating 92% of floor staff time previously spent on manual clipboard rounds while ensuring 100% automated HACCP continuous compliance."
+  },
+  {
+    "text": "The Kelvyn REST API offers OpenAPI 3.1 specifications and configurable outgoing webhooks. Operators can stream real-time temperature, relative humidity, battery state, GPS location, and alert payloads directly into SAP S/4HANA, Manhattan Associates WMS, Oracle Transportation Management, or custom data lakes."
+  },
+  {
+    "text": "Installing Kelvyn sensors requires under three minutes per unit without running cables or drilling conduit. Sensors attach using industrial neodymium magnetic brackets or mechanical anchors, and pair instantly when tapped with a smartphone NFC or by pressing the hardware sync key."
+  },
+  {
+    "text": "Kelvyn global sales and commercial pilot inquiries can be reached via sales@kelvyn.io. The 24/7 technical operations desk is reachable via ops@kelvyn.io, US toll-free hotline +1 (800) 535-8960, and international desk +41 44 214 88 00. Standard business hours are Monday through Friday, 07:00 to 19:00 CET and EST, with 24/7/365 emergency escalation."
+  }
+]

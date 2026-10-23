@@ -1,0 +1,74 @@
+[
+  // ASSUMED — VERIFY: Exact catalog items and product lines currently available
+  {
+    "text": "Product Categories: Notebloom offers a curated collection of aesthetic and Korean-inspired stationery, including hardbound and spiral notebooks, undated productivity planners, gel and ballpoint pens, pastel highlighters, decorative sticky notes, washi tapes, desk organizers, and themed stationery gift sets."
+  },
+  // ASSUMED — VERIFY: Specific notebook formats and binding styles
+  {
+    "text": "Notebooks & Journals: Our notebooks include A5 hardcover journals, pocket-sized memo pads, dotted bullet journals, and spiral-bound workbooks designed for note-taking, journaling, and sketching."
+  },
+  // ASSUMED — VERIFY: Planner formats (dated vs undated)
+  {
+    "text": "Planners: Notebloom carries undated daily, weekly, and monthly aesthetic planners so you can start organizing your goals and schedules at any point of the year without wasting pages."
+  },
+  // ASSUMED — VERIFY: Desk organizer assortment
+  {
+    "text": "Desk Organizers & Accessories: We offer compact aesthetic desk accessories including acrylic pen holders, mini drawer organizers, mini desktop calculators, utility craft cutters, and clipboards to keep your study or workspace tidy."
+  },
+  // ASSUMED — VERIFY: Gift set contents and packaging
+  {
+    "text": "Gift Sets: Notebloom curates aesthetic stationery gift bundles packaged with matching notebooks, pens, highlighters, and decorative sticky notes, ideal for birthdays, students, and stationery lovers."
+  },
+  // ASSUMED — VERIFY: Notebook retail price range
+  {
+    "text": "Notebook Pricing: Ready-to-buy notebooks and journals typically range from Rs. 350 to Rs. 950 (PKR), depending on size, page count, and cover material."
+  },
+  // ASSUMED — VERIFY: Planner retail price range
+  {
+    "text": "Planner Pricing: Our undated aesthetic planners and life organizers generally range from Rs. 750 to Rs. 1,600 (PKR) depending on binding, thickness, and layout complexity."
+  },
+  // ASSUMED — VERIFY: Pens and highlighters price range
+  {
+    "text": "Pens & Writing Tools Pricing: Individual aesthetic pens, fine-liner markers, and pastel highlighter sets typically range between Rs. 150 and Rs. 850 (PKR)."
+  },
+  // ASSUMED — VERIFY: Desk accessories price range
+  {
+    "text": "Desk Accessories & Sticky Notes Pricing: Sticky note pads, mini calculators, cutters, and desk accessories generally range from Rs. 180 to Rs. 650 (PKR)."
+  },
+  // Stated fact: Ordering channels
+  {
+    "text": "How to Place an Order: Customers can shop through three convenient channels: directly on our website storefront at notebloom.shop, via our TikTok Shop showcase, or by messaging our team on WhatsApp at 03373876846 with item screenshots."
+  },
+  // Stated fact: Pop-up presence
+  {
+    "text": "In-Person Pop-ups: While Notebloom is primarily an online brand, we occasionally participate in physical pop-ups and market stalls, such as our pop-up stall at Habitt. Follow our social channels for announcements on future in-person events."
+  },
+  // ASSUMED — VERIFY: Delivery timelines for Karachi vs nationwide
+  {
+    "text": "Shipping Timelines: Orders within Karachi typically arrive within 2 to 4 business days. Deliveries to Lahore, Islamabad, and other cities across Pakistan take approximately 4 to 7 business days via reliable local couriers."
+  },
+  // ASSUMED — VERIFY: Standard courier delivery fee and free shipping threshold
+  {
+    "text": "Shipping Charges: Standard delivery charges are approximately Rs. 200 to Rs. 250 across Pakistan. Free delivery may be offered on qualifying promotional orders over Rs. 2,500."
+  },
+  // ASSUMED — VERIFY: Return/exchange window and video requirement
+  {
+    "text": "Return & Exchange Policy: We offer an exchange within 7 days of delivery for defective, incorrect, or transit-damaged items. Customers are requested to share a clear unboxing video or photos showing the issue. Due to the delicate nature of stationery, change-of-mind returns are not accepted once opened or used."
+  },
+  // Stated fact: Custom/bulk sourcing orders are priced individually
+  {
+    "text": "Custom & Bulk Sourcing Orders: Notebloom provides custom sourcing and bulk stationery orders for corporate gifting, events, school drives, and party favors. Because each sourcing request depends on quantities, specifications, and market availability, bulk orders are priced individually. Please contact our team directly via WhatsApp (03373876846) or email (notebloom50@gmail.com) for a tailored quotation."
+  },
+  // ASSUMED — VERIFY: Accepted payment methods
+  {
+    "text": "Payment Methods: We support Cash on Delivery (COD) across Pakistan, as well as direct Online Bank Transfer, JazzCash, and EasyPaisa for prepaid orders."
+  },
+  // ASSUMED — VERIFY: Domestic only vs international shipping
+  {
+    "text": "Delivery Coverage: Notebloom currently ships orders across all cities and regions within Pakistan only. We do not offer international shipping at this time."
+  },
+  // Stated fact: Contact and order code requirement
+  {
+    "text": "Order Inquiries & Support: If you have questions regarding an existing order, shipping status, or product details, please message our support team on WhatsApp at 03373876846 or email notebloom50@gmail.com with your order reference code."
+  }
+]
