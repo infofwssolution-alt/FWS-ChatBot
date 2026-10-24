@@ -58,8 +58,8 @@ router.post('/', async (req, res) => {
       console.warn('[Chat History Warning] Could not retrieve history:', histErr.message);
     }
 
-    // 2. Retrieve top 3 relevant chunks scoped strictly to clientId
-    const relevantChunks = await retrieveRelevantChunks(cleanMessage, 3, clientId);
+    // 2. Retrieve top 4 relevant chunks scoped strictly to clientId
+    const relevantChunks = await retrieveRelevantChunks(cleanMessage, 4, clientId);
 
     // 3. Initiate Groq streaming completion with client system prompt and conversation history
     const groqStream = await streamGroqReply(cleanMessage, relevantChunks, clientId, historyTurns);

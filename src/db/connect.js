@@ -27,8 +27,9 @@ export async function connectDB() {
     });
 
     await client.connect();
-    // Use the database specified in the URI connection string, or default to 'chatbot_db'
-    db = client.db();
+    // Use MONGODB_DB env var if specified (e.g. for local isolation), else the db in the URI connection string
+    const dbName = process.env.MONGODB_DB || undefined;
+    db = client.db(dbName);
     console.log(`[Database] Successfully connected to MongoDB database: "${db.databaseName}"`);
     return db;
   } catch (error) {

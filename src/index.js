@@ -56,7 +56,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve widget files statically for testing & direct CDN-like delivery
 const widgetDir = path.resolve(__dirname, '../widget');
-app.use('/widget', express.static(widgetDir));
+app.use('/widget', express.static(widgetDir, {
+  setHeaders: (res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  },
+}));
 
 // ============================================================================
 // HEALTH CHECK ENDPOINT
