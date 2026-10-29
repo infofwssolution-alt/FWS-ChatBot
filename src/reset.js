@@ -47,8 +47,9 @@ async function reset() {
           token: process.env.UPSTASH_REDIS_REST_TOKEN,
         });
 
+        const prefix = process.env.REDIS_KEY_PREFIX || '';
         // Scan and delete keys matching ratelimit:*client:<client_id>* and daily:*<client_id>*
-        const pattern = `*${clientId}*`;
+        const pattern = `${prefix}*${clientId}*`;
         const keys = await redis.keys(pattern);
         if (keys && keys.length > 0) {
           for (const key of keys) {

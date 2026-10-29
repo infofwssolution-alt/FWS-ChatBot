@@ -50,8 +50,10 @@ export function createRateLimitMiddleware() {
     try {
       const redis = getRedisClient();
 
+      const prefix = process.env.REDIS_KEY_PREFIX || '';
+
       // 1. Session Rate Limit Key
-      const sessionKey = `ratelimit:session:${sessionId}`;
+      const sessionKey = `${prefix}ratelimit:session:${sessionId}`;
       const sessionCount = await redis.incr(sessionKey);
       if (sessionCount === 1) {
         await redis.expire(sessionKey, WINDOW_SECONDS);
@@ -70,7 +72,7 @@ export function createRateLimitMiddleware() {
 
       // 2. IP Rate Limit Key
       const cleanIp = clientIp.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const ipKey = `ratelimit:ip:${cleanIp}`;
+      const ipKey = `${prefix}ratelimit:ip:${cleanIp}`;
       const ipCount = await redis.incr(ipKey);
       if (ipCount === 1) {
         await redis.expire(ipKey, WINDOW_SECONDS);
@@ -85,7 +87,7 @@ export function createRateLimitMiddleware() {
 
       // 3. Daily Client Global Cap
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const clientDailyKey = `ratelimit:daily:${clientId}:${today}`;
+      const clientDailyKey = `${prefix}ratelimit:daily:${clientId}:${today}`;
       const clientCount = await redis.incr(clientDailyKey);
       if (clientCount === 1) {
         await redis.expire(clientDailyKey, DAY_SECONDS);

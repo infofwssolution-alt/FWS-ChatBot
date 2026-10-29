@@ -65,11 +65,11 @@ async function parseKnowledgeFile(filePath) {
     return items.map((item) => (typeof item === 'string' ? item : item.text)).filter(Boolean);
   }
 
-  // Markdown parsing: split on blank lines or ## headers into coherent chunks
+  // Markdown parsing: split on blank lines into coherent chunks, ignoring standalone title headings
   const paragraphs = rawData
     .split(/\n\s*\n/)
     .map((p) => p.trim())
-    .filter((p) => p.length > 20);
+    .filter((p) => p.length > 20 && !/^#\s+[^#\n]+$/.test(p));
 
   return paragraphs;
 }
